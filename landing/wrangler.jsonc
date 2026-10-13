@@ -1,0 +1,18 @@
+{
+	"name": "geass-site",
+	"account_id": "00956a1f0083fbee5279370703e887da",
+	"compatibility_date": "2026-10-01",
+	"main": "worker.js",
+	"alias": {
+		"metascript-grammar": "../../recompiler/tools/editor-plugin/vscode/syntaxes/metascript.tmLanguage.json",
+		"code-block-theme": "./src/ui/codeBlockTheme.js",
+		"playground-editor": "./src/playground/editor.js"
+	},
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS",
+		"not_found_handling": "none",
+		"run_worker_first": ["/*", "!/assets/*", "!/void/*"]
+	},
+	"routes": [{ "pattern": "geass.metascriptlang.org", "custom_domain": true }]
+}
