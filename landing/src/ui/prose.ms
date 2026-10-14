@@ -3,13 +3,13 @@ import { createStyles, styleOf } from "../../../../neon/src/macros/ui/style";
 import { Pressable, Text, View } from "../../../../neon/src/components/primitives";
 import { NeonNode } from "../../../../neon/src/render/node";
 import { Style } from "../../../../neon/src/render/style";
+import { Clipboard } from "../../../../neon/src/api/clipboard";
 import { theme } from "../theme";
 import { CodeBlock } from "./codeBlock";
 import { Hairline } from "./decor";
 import { PageAbout, PageTitle } from "./pageHead";
 
-extern function copyText(text: string, started: () => void, ended: () => void): void
-	from "((text, started, ended) => navigator.clipboard.writeText(text).then(() => { started(); setTimeout(ended, 1600); }))(#, #, #)";
+const COPIED_MS = 1600;
 
 const ICON = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24'" +
 	" height='24' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke-width='1.5' ";
@@ -164,7 +164,9 @@ export function Sample(props: { code: string }): NeonNode {
 			style={p.copy}
 			accessibilityLabel={copied() ? "Copied" : "Copy"}
 			onPress={(): void => {
-				copyText(props.code, (): void => { setCopied(true); }, (): void => { setCopied(false); });
+				Clipboard.setString(props.code);
+				setCopied(true);
+				setTimeout((): void => { setCopied(false); }, COPIED_MS);
 			}}
 		>
 			<View style={p.copyIcon({ state: copied() ? "copied" : "" })} />
