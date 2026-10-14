@@ -3,9 +3,9 @@
 // Solana runtime. No wallet, no validator, no deploy.
 
 import {
-	Program, ProgramError, Pubkey, System, SYSTEM_PROGRAM_ID, Writable, WritableSigner,
-	accounts, args, asAccount, bump, failWith, findProgramAddressOf, instruction,
-	instructionDiscriminator, seeds, transfer,
+	Program, ProgramError, Pubkey, System, SYSTEM_PROGRAM_ID, Writable, WritablePda,
+	WritableSigner, accounts, args, asAccount, bump, failWith, findProgramAddressOf, instruction,
+	instructionDiscriminator, seeds, signed, transfer,
 } from "std/solana";
 import { HostAccount, run } from "std/solana/host";
 
@@ -26,7 +26,8 @@ export struct DepositAccounts {
 
 export struct WithdrawAccounts {
 	user: WritableSigner;
-	@seeds("vault", user) @bump vault: Writable;
+	@seeds("vault", user) @bump vault: WritablePda;
+	systemProgram: Program<System>;
 }
 
 function deposit(): Result<uint64, ProgramError> {
@@ -38,11 +39,10 @@ function deposit(): Result<uint64, ProgramError> {
 function withdraw(): Result<uint64, ProgramError> {
 	const given = try args<AmountArgs>();
 	const x = try accounts<WithdrawAccounts>();
-	const vault = x.vault.asAccount();
-	const user = x.user.asAccount();
-	vault.setLamports(vault.lamports() - given.amount);
-	user.setLamports(user.lamports() + given.amount);
-	return Result.ok(given.amount);
+	return signed(
+		transfer(x.vault.asAccount(), x.user.asAccount(), given.amount),
+		["vault", x.user, [x.vault.foundBump()]],
+	);
 }
 
 export function dispatch(): Result<uint64, ProgramError> {
@@ -102,7 +102,7 @@ if (vault.ok) {
 
 	const held: HostAccount[] = [
 		holder(alice, SYSTEM_PROGRAM_ID, 10000000000, true),
-		holder(vault.value.key, program, 0, false),
+		holder(vault.value.key, SYSTEM_PROGRAM_ID, 0, false),
 		system,
 	];
 	report("alice deposits 1 SOL", run(program, held, call("Deposit", 1000000000), entry).result, held);
@@ -111,6 +111,6 @@ if (vault.ok) {
 	held[0].signer = false;
 	report("withdraw without alice's signature", run(program, held, call("Withdraw", 250000000), entry).result, held);
 
-	const stolen: HostAccount[] = [holder(mallory, SYSTEM_PROGRAM_ID, 10000000000, true), held[1]];
+	const stolen: HostAccount[] = [holder(mallory, SYSTEM_PROGRAM_ID, 10000000000, true), held[1], system];
 	report("mallory withdraws from alice's vault", run(program, stolen, call("Withdraw", 250000000), entry).result, stolen);
 }
