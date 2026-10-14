@@ -187,7 +187,6 @@ const p = createStyles({
 		paddingBottom: 10,
 		paddingLeft: 20,
 		paddingRight: 20,
-		boxShadow: "inset 0 1px 0 " + theme.line,
 		fontSize: 12,
 		lineHeight: 18,
 		color: "#6b7079",

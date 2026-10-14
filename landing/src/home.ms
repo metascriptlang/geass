@@ -90,7 +90,6 @@ const s = createStyles({
 	},
 	header: { flexDirection: "row", alignItems: "center", gap: 20, height: 92, zIndex: 1 },
 	brand: {
-		marginRight: -6,
 		fontSize: 22,
 		fontWeight: "bold",
 		letterSpacing: 6,
@@ -107,7 +106,7 @@ const s = createStyles({
 	},
 	siteNav: { flexDirection: "row", gap: 36, marginLeft: "auto" },
 	navLink: { fontSize: 14, color: theme.white, textDecorationLine: "none" },
-	navMark: { marginLeft: -24, marginRight: -22, color: theme.line },
+	navMark: { color: theme.line },
 	buttonLink: { color: theme.ink, textDecorationLine: "none" },
 	headerAction: {
 		marginLeft: 12,

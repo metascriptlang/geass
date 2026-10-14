@@ -33,7 +33,6 @@ const n = createStyles({
 		fontSize: 128,
 		lineHeight: 128,
 		fontWeight: "700",
-		letterSpacing: -2,
 		color: "#ffa828",
 	},
 	line: {
