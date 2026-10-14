@@ -14,7 +14,7 @@ extern class HTMLElement {
 	replaceChildren(): void;
 }
 
-extern function pagePath(): string from "(location.pathname.replace(/\\/+$/, ''))";
+extern function pagePath(): string from "(location.pathname.replace(/\\/+$$/, ''))";
 extern function servedWidth(): number from "(Number(document.getElementById('served')?.dataset.width ?? 0))";
 extern function servedRoot(): HTMLElement from "(document.getElementById('served'))";
 extern function realWidth(): number from "(innerWidth)";
