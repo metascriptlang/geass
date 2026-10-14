@@ -21,16 +21,7 @@ int32_t mechFileRead(const char *name, uint8_t *out, int64_t count) {
 	return got == (size_t)count;
 }
 
-EM_JS(double, mechScrollProgress, (void), {
-	const unfold = parseFloat(document.documentElement.style.getPropertyValue("--scroll"));
-	if (!isNaN(unfold)) return unfold;
-	const range = document.documentElement.scrollHeight - innerHeight;
-	return range > 0 ? Math.min(1, Math.max(0, scrollY / range)) : 0;
-});
-
 EM_JS(double, mechPageProgress, (void), {
-	const page = parseFloat(document.documentElement.style.getPropertyValue("--page"));
-	if (!isNaN(page)) return page;
 	const range = document.documentElement.scrollHeight - innerHeight;
 	return range > 0 ? Math.min(1, Math.max(0, scrollY / range)) : 0;
 });

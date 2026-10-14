@@ -58,7 +58,6 @@ import {
 @compile("./mechHost.c");
 extern function mechFileSize(name: cstring): int64;
 extern function mechFileRead(name: cstring, out: Span<uint8>): int32;
-extern function mechScrollProgress(): float64;
 extern function mechPageProgress(): float64;
 extern function mechReady(): void;
 extern function mechNow(): float64;
@@ -117,6 +116,7 @@ const FRONT_HEIGHT: float32 = 0.52;
 const BEAT_FIRST_FRAME: float32[] = [51.0, 59.0, 67.0, 70.0, 73.0, 91.0];
 const BEAT_LAST_FRAME: float32[] = [93.0, 99.0, 105.0, 108.0, 116.0, 122.0];
 const DAYLIGHT_FROM: float64 = 0.84;
+const UNFOLDED_BY: float64 = 0.2;
 const SKETCH_MS: float64 = 900.0;
 const NOT_YET: float64 = -1.0;
 const FIRST_LOOK: int32 = 1;
@@ -395,7 +395,7 @@ function frameMech(): void {
 		normalThreshold: mechTuned("crease, normal dot", 0.0, 1.0, 0.8) as float32,
 	});
 	setOutlineBlend(forward, Math.max(eased(sketched), mechTuned("drawn (0 follows scroll)", 0.0, 1.0, 0.0) as float32));
-	progress += ((mechScrollProgress() as float32) - progress) * EASE;
+	progress += ((Math.min(1.0, page / UNFOLDED_BY) as float32) - progress) * EASE;
 	paged += ((page as float32) - paged) * EASE;
 	const frame: float32 = progress * ((frames - 1) as float32);
 	for (let beat = 0; beat < BEATS; beat++) {

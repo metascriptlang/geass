@@ -71,7 +71,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
-// include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmpbv1_ocpu.js
+// include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmpbx6yu_ec.js
 
   if (!Module['expectedDataFileDownloads']) Module['expectedDataFileDownloads'] = 0;
   Module['expectedDataFileDownloads']++;
@@ -203,21 +203,21 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 
   })();
 
-// end include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmpbv1_ocpu.js
-// include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmp7ffv4_jp.js
+// end include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmpbx6yu_ec.js
+// include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmpvvpjfmqw.js
 
     // All the pre-js content up to here must remain later on, we need to run
     // it.
     if ((typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER) || (typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET != 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
-  // end include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmp7ffv4_jp.js
-// include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmpuuxxna3o.js
+  // end include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmpvvpjfmqw.js
+// include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmp4_9xu80n.js
 
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach((task) => {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
-  // end include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmpuuxxna3o.js
+  // end include: /var/folders/t_/71q9bl7n35q5l4rcn6c744fw0000gn/T/tmp4_9xu80n.js
 
 
 var arguments_ = [];
@@ -7613,8 +7613,7 @@ function sapp_js_toggle_fullscreen() { const canvas = Module.sapp_emsc_target; i
 function sapp_js_clear_favicon() { const link = document.getElementById('sokol-app-favicon'); if (link) { document.head.removeChild(link); } }
 function sapp_js_set_favicon(w,h,pixels) { const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h; const ctx = canvas.getContext('2d'); const img_data = ctx.createImageData(w, h); img_data.data.set(HEAPU8.subarray(pixels, pixels + w*h*4)); ctx.putImageData(img_data, 0, 0); const new_link = document.createElement('link'); new_link.id = 'sokol-app-favicon'; new_link.rel = 'shortcut icon'; new_link.href = canvas.toDataURL(); document.head.appendChild(new_link); }
 function slog_js_log(level,c_str) { const str = UTF8ToString(Number(c_str)); switch (level) { case 0: console.error(str); break; case 1: console.error(str); break; case 2: console.warn(str); break; default: console.info(str); break; } }
-function mechScrollProgress() { const unfold = parseFloat(document.documentElement.style.getPropertyValue("--scroll")); if (!isNaN(unfold)) return unfold; const range = document.documentElement.scrollHeight - innerHeight; return range > 0 ? Math.min(1, Math.max(0, scrollY / range)) : 0; }
-function mechPageProgress() { const page = parseFloat(document.documentElement.style.getPropertyValue("--page")); if (!isNaN(page)) return page; const range = document.documentElement.scrollHeight - innerHeight; return range > 0 ? Math.min(1, Math.max(0, scrollY / range)) : 0; }
+function mechPageProgress() { const range = document.documentElement.scrollHeight - innerHeight; return range > 0 ? Math.min(1, Math.max(0, scrollY / range)) : 0; }
 function mechReady() { Module.canvas.dispatchEvent(new Event("mechready")); }
 function mechNow() { return performance.now(); }
 function mechFetchStage(stage) { const files = stage == 1 ? ["body.glb.packed", "coreLite.glb.packed"] : ["coreDetail.glb.packed"]; Module.mechStages = Module.mechStages || {}; Promise.all(files.map(async (file) => { const reply = await fetch("/void/models/" + file); if (!reply.ok) throw new Error(file + " answered " + reply.status); const bytes = reply.body.pipeThrough(new DecompressionStream("gzip")); FS.writeFile(file.slice(0, -".packed".length), new Uint8Array(await new Response(bytes).arrayBuffer())); })).then( () => { Module.mechStages[stage] = 1; }, (reason) => { console.error("mech view: stage " + stage + " did not load:", reason); Module.mechStages[stage] = -1; } ); }
@@ -7979,8 +7978,6 @@ var wasmImports = {
   mechPageProgress,
   /** @export */
   mechReady,
-  /** @export */
-  mechScrollProgress,
   /** @export */
   mechStageArrived,
   /** @export */
