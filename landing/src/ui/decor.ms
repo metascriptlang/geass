@@ -61,6 +61,13 @@ const d = createStyles({
 			+ "transparent 1px, transparent 6px)",
 		clipPath: FOOT_SLANT,
 	},
+	scrollRulerMark: {
+		position: "absolute",
+		top: 0,
+		bottom: 0,
+		width: 2,
+		backgroundColor: theme.signal,
+	},
 	vignette: {
 		position: "absolute",
 		top: 0,
@@ -99,15 +106,7 @@ export function ScrollMarker(props: { tail: Accessor<boolean> }): NeonNode {
 export function ScrollRuler(props: { place: Style; along: Accessor<string>; drop: Accessor<string> }): NeonNode {
 	return <View style={[d.scrollRuler, props.place]}>
 		<View style={d.scrollRulerWindow}><View style={d.scrollRulerTicks} /></View>
-		<View style={{
-			position: "absolute",
-			top: 0,
-			bottom: 0,
-			width: 2,
-			backgroundColor: theme.signal,
-			left: props.along(),
-			marginBottom: props.drop(),
-		}} />
+		<View style={[d.scrollRulerMark, { left: props.along(), marginBottom: props.drop() }]} />
 	</View>;
 }
 

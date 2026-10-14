@@ -307,6 +307,7 @@ const s = createStyles({
 		gap: 7,
 		transform: "translateY(calc(-100% + 1.5px))",
 	},
+	leadGroup: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", transition: DRAWN },
 	leadText: {
 		gap: 2,
 		width: "max-content",
@@ -461,7 +462,7 @@ function Lead(
 	const wipe = (): string => props.back
 		? `inset(-60px -400px -20px calc(73% + 130px - ${drawn()} * (${props.reach} + 130px)))`
 		: `inset(-60px calc(83% + 100px - ${drawn()} * (${props.reach} + 100px)) -20px -400px)`;
-	return <View style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", transition: DRAWN, clipPath: wipe() }}>
+	return <View style={[s.leadGroup, { clipPath: wipe() }]}>
 		<View style={[s.leadRow, props.row]}>
 			<View style={s.leadText({ side: props.back ? "back" : "" })}>
 				<span style={s.labelTitle}>{props.title}</span>
@@ -547,8 +548,7 @@ export function Home(): NeonNode {
 					aria-label="Geass mech, rendered live"
 					ref={startMech}
 				/>
-				<View style={s.labels({ layout: wide() ? "" : "narrow" })}>
-				<View style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", clipPath: labelsClip() }}>
+				<View style={[s.labels({ layout: wide() ? "" : "narrow" }), { clipPath: labelsClip() }]}>
 					<Lead title="INTERFACE" name="TypeScript" drawsAt={0.22} reach="17%" row={s.rowInterface({ layout: wide() ? "" : "narrow" })}
 						slope={s.slopeInterface} />
 					<Lead title="GUARD" name="Compile-time" drawsAt={0.32} reach="43%" row={s.rowGuard({ layout: wide() ? "" : "narrow" })}
@@ -561,7 +561,6 @@ export function Home(): NeonNode {
 						slope={s.slopeRuntime} />
 					<Lead title="TARGET" name="Solana SBF" drawsAt={0.72} reach="15%" row={s.rowTarget({ layout: wide() ? "" : "narrow" })}
 						back slope={s.slopeTarget} />
-				</View>
 				</View>
 			</View>
 			</View>
