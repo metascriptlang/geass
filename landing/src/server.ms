@@ -7,10 +7,7 @@ import { Home } from "./home";
 import { NotFound } from "./notFound";
 import { Playground, atPlayground } from "./playground";
 
-extern function serve(page: (path: string, width: number) => SsrMarkup, lost: () => SsrMarkup): void
-	from "(globalThis.geassPage = #, globalThis.geassNotFound = #)";
-
-function page(path: string, width: number): SsrMarkup {
+export function page(path: string, width: number): SsrMarkup {
 	publishWindow(width, 0);
 	if (path === "") { return renderToMarkup(element(<Home />)); }
 	if (atPlayground(path)) { return renderToMarkup(element(<Playground />)); }
@@ -24,8 +21,6 @@ function page(path: string, width: number): SsrMarkup {
 	}
 }
 
-function notFoundPage(): SsrMarkup {
+export function notFoundPage(): SsrMarkup {
 	return renderToMarkup(element(<NotFound />));
 }
-
-serve(page, notFoundPage);

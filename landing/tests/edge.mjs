@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-await import("../out/server.js");
-const page = (path, width) => globalThis.geassPage(path, width).html;
+const { notFoundPage, page: served } = await import("../out/server.js");
+const page = (path, width) => served(path, width).html;
 
 const program = page("/docs/program", 1440);
 const pdas = page("/docs/pdas", 1440);
@@ -14,13 +14,13 @@ assert.equal(mentions(page("/docs/program", 1440)), 2, "the desktop render lost 
 assert.equal(mentions(page("/docs/program", 390)), 1, "the phone render kept the desktop section list");
 
 assert.match(page("", 1440), /<h1[^>]*>Write TypeScript\./, "the home page was not served");
-assert.match(globalThis.geassNotFound().html, /<h1[^>]*>404</, "the not-found page was not served");
-assert.ok(globalThis.geassPage("/docs/program", 1440).css.includes(".neon-view"), "the page came without its rules");
-assert.match(globalThis.geassPage("/docs/program", 1440).head, /<title[^>]*>Program structure · Geass docs</, "the docs page came without its own title");
-assert.match(globalThis.geassPage("/docs/pdas", 1440).head, /rel="canonical" href="https:\/\/geass\.metascriptlang\.org\/docs\/pdas"/);
-assert.match(globalThis.geassPage("/playground", 1440).head, /<title[^>]*>Playground · Geass</, "the playground came without a title");
-assert.match(globalThis.geassPage("/playground", 1440).html, /SIMULATOR/, "the playground was not rendered on the server");
-assert.match(globalThis.geassNotFound().head, /name="robots" content="noindex"/, "the not-found page can be indexed");
+assert.match(notFoundPage().html, /<h1[^>]*>404</, "the not-found page was not served");
+assert.ok(served("/docs/program", 1440).css.includes(".neon-view"), "the page came without its rules");
+assert.match(served("/docs/program", 1440).head, /<title[^>]*>Program structure · Geass docs</, "the docs page came without its own title");
+assert.match(served("/docs/pdas", 1440).head, /rel="canonical" href="https:\/\/geass\.metascriptlang\.org\/docs\/pdas"/);
+assert.match(served("/playground", 1440).head, /<title[^>]*>Playground · Geass</, "the playground came without a title");
+assert.match(served("/playground", 1440).html, /SIMULATOR/, "the playground was not rendered on the server");
+assert.match(notFoundPage().head, /name="robots" content="noindex"/, "the not-found page can be indexed");
 const counter = readFileSync(new URL("../src/playground/counter.txt", import.meta.url), "utf8").split("\n").map(line => line.trim());
 for (const [, name, sample] of readFileSync(new URL("../src/features.ms", import.meta.url), "utf8").matchAll(/const (\w+_CODE) = "([^"]*)";/g)) {
 	if (sample.startsWith("$")) { continue; }
