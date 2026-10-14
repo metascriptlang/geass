@@ -16,7 +16,7 @@ export function discriminator(this typeof Escrow): Discriminator {
 const LIFECYCLE_CODE = "const oracle = try create<Oracle>(x.payer, x.oracle.asWritable());
 
 const made = try createPda<Counter>(x.payer, x.target, [\"counter\", x.payer]);
-const _grown = try realloc(made.account, 148, x.payer);
+const _grown = try realloc(made.asMutable(), 148, x.payer);
 
 const _escrowClosed = try close(x.escrow, x.maker.asWritable());";
 const ERROR_CODE = "export enum EscrowError {

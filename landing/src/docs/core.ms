@@ -88,8 +88,8 @@ const CREATE_CODE = "const made = try createPda<Escrow>(
   x.escrow,
   [\"escrow\", x.maker, leBytes(a.seed)],
 );
-const escrow = made.account.data();
-escrow.bump = made.bump;";
+const escrow = made.asMutable().data();
+escrow.bump = made.foundBump();";
 const STORED_CODE = "@seeds(\"escrow\", maker, leBytes(escrow.seed)) @bump(escrow.bump)
 escrow: Mutable<Escrow>;";
 const TRANSFER_CODE = "return transfer(x.user.asAccount(), x.vault.asAccount(), given.amount);";

@@ -30,7 +30,7 @@ const MINT_PDA_CODE = "const mint = x.mint.asAccount();
 const mintBump = try createMintPda(
   x.authority, x.mint, [\"mint\"], TOKEN_PROGRAM_ID, 6, mint.key(), null,
 );";
-const ASSOCIATED_CODE = "const escrowAccount = made.account.asAccount();
+const ASSOCIATED_CODE = "const escrowAccount = made.asMutable().asAccount();
 const _vaultMade = try createAssociatedFor(
   x.maker,
   x.vault,
