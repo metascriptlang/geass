@@ -101,16 +101,16 @@ if (vault.ok) {
 	const system = { ...holder(SYSTEM_PROGRAM_ID, Pubkey.zero(), 1, false), writable: false, executable: true };
 
 	const held: HostAccount[] = [
-		holder(alice, SYSTEM_PROGRAM_ID, 1000, true),
+		holder(alice, SYSTEM_PROGRAM_ID, 10000000000, true),
 		holder(vault.value.key, program, 0, false),
 		system,
 	];
-	report("alice deposits 400", run(program, held, call("Deposit", 400), entry).result, held);
-	report("alice withdraws 150", run(program, held, call("Withdraw", 150), entry).result, held);
+	report("alice deposits 1 SOL", run(program, held, call("Deposit", 1000000000), entry).result, held);
+	report("alice withdraws 0.25 SOL", run(program, held, call("Withdraw", 250000000), entry).result, held);
 
 	held[0].signer = false;
-	report("withdraw without alice's signature", run(program, held, call("Withdraw", 150), entry).result, held);
+	report("withdraw without alice's signature", run(program, held, call("Withdraw", 250000000), entry).result, held);
 
-	const stolen: HostAccount[] = [holder(mallory, SYSTEM_PROGRAM_ID, 5, true), held[1]];
-	report("mallory withdraws from alice's vault", run(program, stolen, call("Withdraw", 150), entry).result, stolen);
+	const stolen: HostAccount[] = [holder(mallory, SYSTEM_PROGRAM_ID, 10000000000, true), held[1]];
+	report("mallory withdraws from alice's vault", run(program, stolen, call("Withdraw", 250000000), entry).result, stolen);
 }
