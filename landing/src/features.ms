@@ -3,52 +3,28 @@ import { element } from "../../../neon/src/macros/ui/element";
 import { NeonNode } from "../../../neon/src/render/node";
 import { createStyles, styleOf } from "../../../neon/src/macros/ui/style";
 import { theme } from "./theme";
+import { pageShare, unit } from "./pageScroll";
 import { Chapter } from "./ui/chapter";
 
-const DROP_FROM = "translateY(calc(-1 * (clamp(0, (0.3 - (var(--page, 0) - ";
-const DROP_TO = ") / 0.1) / 0.25, 1) * (100vh - 480px)";
-const CREEP_FROM = " + clamp(0, (0.85 - (var(--page, 0) - ";
-const CREEP_TO = ") / 0.1) / 0.55, 1) * 1.4vh";
-const LEAVE_FROM = " - clamp(0, ((var(--page, 0) - ";
-const LEAVE_TO = ") / 0.1 - 0.85) / 0.1, 1) * 12vh";
+const CHAPTER_SPAN = 0.1;
 
-const FADE_FROM = "opacity(calc(pow(clamp(0, ((var(--page, 0) - ";
-const FADE_TO = ") / 0.1 - 0.05) / 0.25, 1), 3)))";
+function riseAt(at: number): string {
+	const into = (pageShare() - at) / CHAPTER_SPAN;
+	const drop = unit((0.3 - into) / 0.25);
+	const creep = unit((0.85 - into) / 0.55);
+	const leave = unit((into - 0.85) / 0.1);
+	return `translateY(calc(-1 * (${drop} * (100vh - 480px) + ${creep} * 1.4vh - ${leave} * 12vh)))`;
+}
+
+function fadeAt(at: number): string {
+	const into = (pageShare() - at) / CHAPTER_SPAN;
+	return `opacity(${Math.pow(unit((into - 0.05) / 0.25), 3)})`;
+}
 
 const f = createStyles({
 	toneSyntax: { color: theme.signal },
 	toneGuard: { color: "#ffa828" },
 	toneTarget: { color: "#00ffaa" },
-	rideInterface: {
-		transform: DROP_FROM + "0.200" + DROP_TO + CREEP_FROM + "0.200" + CREEP_TO
-			+ LEAVE_FROM + "0.200" + LEAVE_TO + ")))",
-		filter: FADE_FROM + "0.200" + FADE_TO,
-	},
-	rideGuard: {
-		transform: DROP_FROM + "0.300" + DROP_TO + CREEP_FROM + "0.300" + CREEP_TO
-			+ LEAVE_FROM + "0.300" + LEAVE_TO + ")))",
-		filter: FADE_FROM + "0.300" + FADE_TO,
-	},
-	rideCompiler: {
-		transform: DROP_FROM + "0.400" + DROP_TO + CREEP_FROM + "0.400" + CREEP_TO
-			+ LEAVE_FROM + "0.400" + LEAVE_TO + ")))",
-		filter: FADE_FROM + "0.400" + FADE_TO,
-	},
-	rideMemory: {
-		transform: DROP_FROM + "0.500" + DROP_TO + CREEP_FROM + "0.500" + CREEP_TO
-			+ LEAVE_FROM + "0.500" + LEAVE_TO + ")))",
-		filter: FADE_FROM + "0.500" + FADE_TO,
-	},
-	rideRuntime: {
-		transform: DROP_FROM + "0.600" + DROP_TO + CREEP_FROM + "0.600" + CREEP_TO
-			+ LEAVE_FROM + "0.600" + LEAVE_TO + ")))",
-		filter: FADE_FROM + "0.600" + FADE_TO,
-	},
-	rideTarget: {
-		transform: DROP_FROM + "0.700" + DROP_TO + CREEP_FROM + "0.700" + CREEP_TO
-			+ LEAVE_FROM + "0.700" + LEAVE_TO + ")))",
-		filter: FADE_FROM + "0.700" + FADE_TO,
-	},
 });
 
 const INTERFACE_CODE = "export struct Counter {
@@ -84,7 +60,8 @@ export function Features(
 			point="INTERFACE · TYPESCRIPT"
 			code={INTERFACE_CODE}
 			tone={f.toneSyntax}
-			travel={f.rideInterface}
+			rise={riseAt(0.2)}
+			fade={fadeAt(0.2)}
 		/>
 		<Chapter
 			at={1}
@@ -96,7 +73,8 @@ export function Features(
 			point="GUARD · COMPILE-TIME"
 			code={GUARD_CODE}
 			tone={f.toneSyntax}
-			travel={f.rideGuard}
+			rise={riseAt(0.3)}
+			fade={fadeAt(0.3)}
 		/>
 		<Chapter
 			at={2}
@@ -108,7 +86,8 @@ export function Features(
 			point="COMPILER · METASCRIPT"
 			code={COMPILER_CODE}
 			tone={f.toneGuard}
-			travel={f.rideCompiler}
+			rise={riseAt(0.4)}
+			fade={fadeAt(0.4)}
 		/>
 		<Chapter
 			at={3}
@@ -120,7 +99,8 @@ export function Features(
 			point="MEMORY · NO GC"
 			code={MEMORY_CODE}
 			tone={f.toneGuard}
-			travel={f.rideMemory}
+			rise={riseAt(0.5)}
+			fade={fadeAt(0.5)}
 		/>
 		<Chapter
 			at={4}
@@ -132,7 +112,8 @@ export function Features(
 			point="RUNTIME · ZERO OVERHEAD"
 			code={RUNTIME_CODE}
 			tone={f.toneTarget}
-			travel={f.rideRuntime}
+			rise={riseAt(0.6)}
+			fade={fadeAt(0.6)}
 		/>
 		<Chapter
 			at={5}
@@ -144,7 +125,8 @@ export function Features(
 			point="TARGET · SOLANA SBF"
 			code={TARGET_CODE}
 			tone={f.toneTarget}
-			travel={f.rideTarget}
+			rise={riseAt(0.7)}
+			fade={fadeAt(0.7)}
 		/>
 	</>;
 }

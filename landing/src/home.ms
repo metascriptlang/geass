@@ -23,6 +23,7 @@ import {
 	GitHubLink,
 } from "./ui/decor";
 import { PageHead, PageTitle } from "./ui/pageHead";
+import { pageShare, shareFrom } from "./pageScroll";
 
 const BACKDROP_LAYERS = [
 	"url(/grain.png)",
@@ -54,10 +55,6 @@ const EDGE_RIGHT = "max(49px, calc((100vw - " + WIDEST + ") / 2 + 49px))";
 const s = createStyles({
 	scrollTrack: { height: "1250vh" },
 	scrollRuler: { width: 200, variants: { layout: { narrow: { flex: 1, width: "auto" } } } },
-	scrollRulerMark: {
-		left: "calc(var(--page, 0) * 100%)",
-		marginBottom: "calc(var(--page, 0) * " + FOOT_SLANT_SHARE + ")",
-	},
 	scrollCount: {
 		opacity: 0,
 		transition: "opacity 0.5s ease",
@@ -301,7 +298,6 @@ const s = createStyles({
 		aspectRatio: 1,
 		fontFamily: theme.mono,
 		fontSize: 13,
-		clipPath: "inset(calc(-100% + 150% * clamp(0, calc((var(--page, 0) - 0.8) / 0.03), 1)))",
 		variants: {
 			layout: { narrow: { fontSize: 10 } },
 		},
@@ -311,7 +307,6 @@ const s = createStyles({
 		gap: 7,
 		transform: "translateY(calc(-100% + 1.5px))",
 	},
-	leadGroup: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", transition: DRAWN },
 	leadText: {
 		gap: 2,
 		width: "max-content",
@@ -338,22 +333,16 @@ const s = createStyles({
 	labelPart: { fontFamily: theme.sans, color: "#b4b5b8" },
 	rowInterface: { top: "41%", left: TEXT_EDGE, right: "83%", variants: { layout: { narrow: { left: "6%" } } } },
 	slopeInterface: { top: "41%", left: "17%", width: "5%" },
-	wipeInterface: { clipPath: "inset(-60px calc(83% + 100px - clamp(0, calc((var(--page, 0) - 0.220) / 0.040), 1) * (17% + 100px)) -20px -400px)" },
 	rowGuard: { top: "88.8%", left: "64.8%", right: TEXT_EDGE_BACK, variants: { layout: { narrow: { right: "6%" } } } },
 	slopeGuard: { top: "54%", left: "30%", width: "34.8%" },
-	wipeGuard: { clipPath: "inset(-60px -400px -20px calc(73% + 130px - clamp(0, calc((var(--page, 0) - 0.320) / 0.040), 1) * (43% + 130px)))" },
 	rowCompiler: { top: "31.1%", left: TEXT_EDGE, right: "78.9%", variants: { layout: { narrow: { left: "6%" } } } },
 	slopeCompiler: { top: "31.1%", left: "21.1%", width: "14.9%" },
-	wipeCompiler: { clipPath: "inset(-60px calc(83% + 100px - clamp(0, calc((var(--page, 0) - 0.420) / 0.040), 1) * (31% + 100px)) -20px -400px)" },
 	rowMemory: { top: "78.9%", left: "68.9%", right: TEXT_EDGE_BACK, variants: { layout: { narrow: { right: "6%" } } } },
 	slopeMemory: { top: "54%", left: "44%", width: "24.9%" },
-	wipeMemory: { clipPath: "inset(-60px -400px -20px calc(73% + 130px - clamp(0, calc((var(--page, 0) - 0.520) / 0.040), 1) * (29% + 130px)))" },
 	rowRuntime: { top: "21.2%", left: TEXT_EDGE, right: "74.8%", variants: { layout: { narrow: { left: "6%" } } } },
 	slopeRuntime: { top: "21.2%", left: "25.2%", width: "24.8%" },
-	wipeRuntime: { clipPath: "inset(-60px calc(83% + 100px - clamp(0, calc((var(--page, 0) - 0.620) / 0.040), 1) * (45% + 100px)) -20px -400px)" },
 	rowTarget: { top: "69%", left: "73%", right: TEXT_EDGE_BACK, variants: { layout: { narrow: { right: "6%" } } } },
 	slopeTarget: { top: "54%", left: "58%", width: "15%" },
-	wipeTarget: { clipPath: "inset(-60px -400px -20px calc(73% + 130px - clamp(0, calc((var(--page, 0) - 0.720) / 0.040), 1) * (15% + 130px)))" },
 	footer: {
 		flexDirection: "row",
 		alignItems: "flex-end",
@@ -424,21 +413,13 @@ function startMech(node: HostNode): void {
 const viewport = useWindowDimensions();
 const wide = createMemo(() => viewport().width >= 900);
 
-extern function whenScrolled(unfoldedBy: number, report: (share: number) => void): void
-	from "((by, report) => { if (typeof document === 'undefined') { return; } const read = () => { const range = document.documentElement.scrollHeight - innerHeight; const share = range > 0 ? scrollY / range : 0; const look = document.documentElement.style; look.setProperty('--page', share.toFixed(4)); look.setProperty('--scroll', Math.min(1, share / by).toFixed(4)); report(share); }; addEventListener('scroll', read, { passive: true }); read(); })(#, #)";
-
 const UNFOLDED_BY = 0.2;
 const CLOSING_FROM = 0.8;
 const UNFOLDING_FROM = 0.42;
 const CHAPTERS = 6;
-const [unfolding, setUnfolding] = createSignal(false);
 const FEATURE_FROM = 0.05;
 const FEATURE_UNTIL = 0.92;
-const [chapter, setChapter] = createSignal(-1);
-const [featured, setFeatured] = createSignal(-1);
-const [coded, setCoded] = createSignal(-1);
 const DAYLIGHT_FROM = 0.84;
-const [daylit, setDaylit] = createSignal(false);
 const QUOTES = [
 	"DATA DOMINATES.",
 	"READABILITY COUNTS.",
@@ -457,23 +438,30 @@ const QUOTED = [
 	"ROB PIKE",
 	"ERIC S. RAYMOND",
 ];
-whenScrolled(UNFOLDED_BY, (share: number) => {
-	setUnfolding(share > UNFOLDING_FROM * UNFOLDED_BY);
-	setDaylit(share > DAYLIGHT_FROM);
-	const along = (share - UNFOLDED_BY) / (CLOSING_FROM - UNFOLDED_BY) * (CHAPTERS as number);
-	const reached = Math.floor(along) as int32;
-	const at = share <= UNFOLDED_BY ? -1 : reached < CHAPTERS ? reached : CHAPTERS - 1;
-	const into = along - (at as number);
-	setChapter(at);
-	setFeatured(into >= FEATURE_FROM && into <= FEATURE_UNTIL ? at : -1);
-	const closed = at === CHAPTERS - 1 && into > FEATURE_UNTIL;
-	setCoded(into < FEATURE_FROM ? at - 1 : closed ? CHAPTERS : at);
+const unfolding = createMemo((): boolean => pageShare() > UNFOLDING_FROM * UNFOLDED_BY);
+const daylit = createMemo((): boolean => pageShare() > DAYLIGHT_FROM);
+const along = createMemo((): number => (pageShare() - UNFOLDED_BY) / (CLOSING_FROM - UNFOLDED_BY) * (CHAPTERS as number));
+const chapter = createMemo((): int32 => {
+	const reached = Math.floor(along()) as int32;
+	return pageShare() <= UNFOLDED_BY ? -1 : reached < CHAPTERS ? reached : CHAPTERS - 1;
 });
+const into = createMemo((): number => along() - (chapter() as number));
+const featured = createMemo((): int32 => into() >= FEATURE_FROM && into() <= FEATURE_UNTIL ? chapter() : -1);
+const coded = createMemo((): int32 => into() < FEATURE_FROM ? chapter() - 1
+	: chapter() === CHAPTERS - 1 && into() > FEATURE_UNTIL ? CHAPTERS : chapter());
+const LEAD_DRAWS_OVER = 0.04;
+const LABELS_CLOSE_FROM = 0.8;
+const LABELS_CLOSE_OVER = 0.03;
+const labelsClip = (): string => `inset(calc(-100% + ${150 * shareFrom(LABELS_CLOSE_FROM, LABELS_CLOSE_OVER)}%))`;
 
 function Lead(
-	props: { title: string; name: string; wipe: Style; row: Style; slope: Style; back?: boolean },
+	props: { title: string; name: string; drawsAt: number; reach: string; row: Style; slope: Style; back?: boolean },
 ): NeonNode {
-	return <View style={[s.leadGroup, props.wipe]}>
+	const drawn = (): number => shareFrom(props.drawsAt, LEAD_DRAWS_OVER);
+	const wipe = (): string => props.back
+		? `inset(-60px -400px -20px calc(73% + 130px - ${drawn()} * (${props.reach} + 130px)))`
+		: `inset(-60px calc(83% + 100px - ${drawn()} * (${props.reach} + 100px)) -20px -400px)`;
+	return <View style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", transition: DRAWN, clipPath: wipe() }}>
 		<View style={[s.leadRow, props.row]}>
 			<View style={s.leadText({ side: props.back ? "back" : "" })}>
 				<span style={s.labelTitle}>{props.title}</span>
@@ -560,18 +548,20 @@ export function Home(): NeonNode {
 					ref={startMech}
 				/>
 				<View style={s.labels({ layout: wide() ? "" : "narrow" })}>
-					<Lead title="INTERFACE" name="TypeScript" wipe={s.wipeInterface} row={s.rowInterface({ layout: wide() ? "" : "narrow" })}
+				<View style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", clipPath: labelsClip() }}>
+					<Lead title="INTERFACE" name="TypeScript" drawsAt={0.22} reach="17%" row={s.rowInterface({ layout: wide() ? "" : "narrow" })}
 						slope={s.slopeInterface} />
-					<Lead title="GUARD" name="Compile-time" wipe={s.wipeGuard} row={s.rowGuard({ layout: wide() ? "" : "narrow" })}
+					<Lead title="GUARD" name="Compile-time" drawsAt={0.32} reach="43%" row={s.rowGuard({ layout: wide() ? "" : "narrow" })}
 						back slope={s.slopeGuard} />
-					<Lead title="COMPILER" name="MetaScript" wipe={s.wipeCompiler} row={s.rowCompiler({ layout: wide() ? "" : "narrow" })}
+					<Lead title="COMPILER" name="MetaScript" drawsAt={0.42} reach="31%" row={s.rowCompiler({ layout: wide() ? "" : "narrow" })}
 						slope={s.slopeCompiler} />
-					<Lead title="MEMORY" name="No GC" wipe={s.wipeMemory} row={s.rowMemory({ layout: wide() ? "" : "narrow" })}
+					<Lead title="MEMORY" name="No GC" drawsAt={0.52} reach="29%" row={s.rowMemory({ layout: wide() ? "" : "narrow" })}
 						back slope={s.slopeMemory} />
-					<Lead title="RUNTIME" name="Zero overhead" wipe={s.wipeRuntime} row={s.rowRuntime({ layout: wide() ? "" : "narrow" })}
+					<Lead title="RUNTIME" name="Zero overhead" drawsAt={0.62} reach="45%" row={s.rowRuntime({ layout: wide() ? "" : "narrow" })}
 						slope={s.slopeRuntime} />
-					<Lead title="TARGET" name="Solana SBF" wipe={s.wipeTarget} row={s.rowTarget({ layout: wide() ? "" : "narrow" })}
+					<Lead title="TARGET" name="Solana SBF" drawsAt={0.72} reach="15%" row={s.rowTarget({ layout: wide() ? "" : "narrow" })}
 						back slope={s.slopeTarget} />
+				</View>
 				</View>
 			</View>
 			</View>
@@ -589,7 +579,8 @@ export function Home(): NeonNode {
 				<span>SCROLL TO UNFOLD</span>
 				<ScrollRuler
 					place={s.scrollRuler({ layout: wide() ? "" : "narrow" })}
-					mark={s.scrollRulerMark}
+					along={`${100 * pageShare()}%`}
+					drop={`calc(${pageShare()} * ${FOOT_SLANT_SHARE})`}
 				/>
 				<Show when={wide}>
 					<span style={s.scrollCount({ state: chapter() >= 0 ? "shown" : "" })}>

@@ -11,13 +11,6 @@ const MOVE_RULE = "clip-path 0.7s " + SPRING + " 0.1s";
 const MOVE_CODE = "opacity 0.55s ease 0.1s, transform 0.7s " + SPRING + " 0.1s";
 
 const h = createStyles({
-	text: {
-		position: "absolute",
-		bottom: 24,
-		left: 0,
-		width: "min(400px, 100%)",
-		zIndex: 1,
-	},
 	textBody: {
 		flexDirection: "column-reverse",
 		variants: { size: { compact: { transform: "translate(-15%, 15%) scale(0.7)" } } },
@@ -108,11 +101,20 @@ export function Chapter(
 		point: string;
 		code: string;
 		tone: Style;
-		travel: Style;
+		rise: Accessor<string>;
+		fade: Accessor<string>;
 	},
 ): NeonNode {
 	return <>
-		<View style={[h.text, props.travel]}>
+		<View style={{
+			position: "absolute",
+			bottom: 24,
+			left: 0,
+			width: "min(400px, 100%)",
+			zIndex: 1,
+			transform: props.rise(),
+			filter: props.fade(),
+		}}>
 			<View style={h.textBody({ size: props.compact() ? "compact" : "" })}>
 				<h2
 					style={layerStyles([
