@@ -14,14 +14,13 @@ extern class HTMLElement {
 	replaceChildren(): void;
 }
 
-extern function pagePath(unused: int32): string from "(#, location.pathname.replace(/\\/+$/, ''))";
-extern function servedWidth(unused: int32): number
-	from "(#, Number(document.getElementById('served')?.dataset.width ?? 0))";
-extern function servedRoot(unused: int32): HTMLElement from "(#, document.getElementById('served'))";
-extern function realWidth(unused: int32): number from "(#, innerWidth)";
-extern function realHeight(unused: int32): number from "(#, innerHeight)";
+extern function pagePath(): string from "(location.pathname.replace(/\\/+$/, ''))";
+extern function servedWidth(): number from "(Number(document.getElementById('served')?.dataset.width ?? 0))";
+extern function servedRoot(): HTMLElement from "(document.getElementById('served'))";
+extern function realWidth(): number from "(innerWidth)";
+extern function realHeight(): number from "(innerHeight)";
 
-const path = pagePath(0);
+const path = pagePath();
 const routed = createDocsSite(createBrowserRoutingHistory());
 const docs: DocsSite | null = routed.ok ? routed.value : null;
 
@@ -33,12 +32,12 @@ function page(): NeonNode {
 }
 
 const host = domHost();
-const servedAt = servedWidth(0);
+const servedAt = servedWidth();
 
 if (servedAt === 0) {
 	render(page(), host, documentBody());
 } else {
-	const root = servedRoot(0);
+	const root = servedRoot();
 	publishWindow(servedAt, 0);
 	try {
 		hydrate(page(), host, root as unknown as HostNode);
@@ -47,6 +46,6 @@ if (servedAt === 0) {
 		root.replaceChildren();
 		render(page(), host, root as unknown as HostNode);
 	}
-	publishWindow(realWidth(0), realHeight(0));
+	publishWindow(realWidth(), realHeight());
 }
 if (docs !== null) { followLinks((docs as DocsSite).open); }
