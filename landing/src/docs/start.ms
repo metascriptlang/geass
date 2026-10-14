@@ -162,7 +162,7 @@ export function GettingStarted(): NeonNode {
 		</P>
 		<Sample code={BUILD_CODE} />
 		<P>
-			This counter builds to a 3,344-byte <M t="counter.so" /> with platform tools
+			This counter builds to a 3,464-byte <M t="counter.so" /> with platform tools
 			v1.57. It has no test yet: <L to="/docs/testing" t="Testing" /> writes its first
 			one and runs it on your machine, and <L to="/docs/deploying" t="Deploying" />{" "}
 			puts it on a cluster.

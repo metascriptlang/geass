@@ -124,7 +124,7 @@ const message = pipe(
 );
 const result = svm.sendTransaction(await signTransactionMessageWithSigners(message));
 console.log(`${result.computeUnitsConsumed()} CU`);";
-const LITESVM_OUT_CODE = "Program B7ihZyoXZ1fwAY3TugkiFJ6SXkzJwMuQrxrekBaSmn32 consumed 1406 of 200000 compute units
+const LITESVM_OUT_CODE = "Program B7ihZyoXZ1fwAY3TugkiFJ6SXkzJwMuQrxrekBaSmn32 consumed 1409 of 200000 compute units
 Program B7ihZyoXZ1fwAY3TugkiFJ6SXkzJwMuQrxrekBaSmn32 success";
 const IDL_CODE = "import { anchorIdl } from \"std/solana/idl\";
 import { Escrow, EscrowError, EscrowOp, MakeArgs } from \"./layout\";
@@ -235,7 +235,7 @@ Program Id: 8JK1ZEmm83T8pHj4t59zsKp6meNW7GYhooWcRmh57ori
 
 $ solana program show 8JK1ZEmm83T8pHj4t59zsKp6meNW7GYhooWcRmh57ori
 Owner: BPFLoaderUpgradeab1e11111111111111111111111
-Data Length: 3344 (0xd10) bytes";
+Data Length: 3464 (0xd88) bytes";
 
 export function Testing(): NeonNode {
 	return <>

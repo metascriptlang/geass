@@ -62,8 +62,9 @@ export function Security(): NeonNode {
 		<Heading at="always-on" title="Checks that stay on" />
 		<P>
 			An index out of range, a division by zero and a cast to a signed type that does
-			not hold the value stop the program. The flag that drops those checks is refused
-			for a program:
+			not hold the value stop the program. One cast does not stop yet: a{" "}
+			<M t="uint64" /> past 2⁶³ cast to <M t="int64" /> becomes negative, so compare
+			it first. The flag that drops those checks is refused for a program:
 		</P>
 		<Sample code={DANGER_CODE} />
 		<Heading at="narrowing" title="An unsigned cast keeps the low bits" />
@@ -157,20 +158,20 @@ export function Performance(): NeonNode {
 		<Heading at="results" title="Results" />
 		<P>
 			Program size in bytes, then compute units for each instruction. Measured on
-			2026-10-12 with <M t="msc" /> 0.3.2 and <M t="--release" />, platform-tools
-			v1.57, in LiteSVM 1.4.1. Another platform-tools version moves the numbers: the
-			helloworld program is 3,272 bytes and 1,417 units with v1.54.
+			2026-10-15 with <M t="msc" /> 0.3.3 (build f82403c8e) and <M t="--release" />,
+			platform-tools v1.57, in LiteSVM 1.4.1. Another platform-tools version moves the
+			numbers: the helloworld program is 3,392 bytes and 1,420 units with v1.54.
 		</P>
 		<Subheading at="helloworld" title="helloworld" />
 		<Table>
 			<Head a="BUILD" b="BYTES · INIT" />
-			<Row a="Geass" b="3,344 · 1,406" />
+			<Row a="Geass" b="3,464 · 1,409" />
 			<Row a="Anchor v2" b="6,400 · 1,441" />
 		</Table>
 		<Subheading at="vault" title="vault" />
 		<Table>
 			<Head a="BUILD" b="BYTES · DEPOSIT, WITHDRAW" />
-			<Row a="Geass" b="3,640 · 1,577, 404" />
+			<Row a="Geass" b="3,688 · 1,577, 404" />
 			<Row a="Anchor v2" b="5,632 · 1,602, 418" />
 			<Row a="Pinocchio" b="5,544 · 1,593, 404" />
 			<Row a="Pinocchio, lazy" b="3,576 · 1,599, 415" />
@@ -178,13 +179,13 @@ export function Performance(): NeonNode {
 		<Subheading at="nested" title="nested" />
 		<Table>
 			<Head a="BUILD" b="BYTES · INITIALIZE, INCREMENT, RESET" />
-			<Row a="Geass" b="5,528 · 2,722, 147, 144" />
+			<Row a="Geass" b="5,728 · 2,733, 149, 144" />
 			<Row a="Anchor v2" b="12,256 · 2,840, 866, 861" />
 		</Table>
 		<Subheading at="prop-amm" title="prop-amm" />
 		<Table>
 			<Head a="BUILD" b="BYTES · UPDATE, INITIALIZE, ROTATE_AUTHORITY" />
-			<Row a="Geass" b="4,424 · 77, 1,369, 101" />
+			<Row a="Geass" b="4,544 · 77, 1,370, 101" />
 			<Row a="Anchor v2" b="8,448 · 81, 1,398, 93" />
 			<Row a="Pinocchio" b="6,672 · 91, 1,375, 95" />
 			<Row a="Pinocchio, lazy" b="5,184 · 103, 1,385, 108" />
@@ -192,13 +193,13 @@ export function Performance(): NeonNode {
 		<Subheading at="multisig" title="multisig" />
 		<Table>
 			<Head a="BUILD" b="BYTES · CREATE, DEPOSIT, SET_LABEL, EXECUTE_TRANSFER" />
-			<Row a="Geass" b="11,472 · 2,444, 2,266, 444, 2,540" />
+			<Row a="Geass" b="11,760 · 2,447, 2,266, 444, 2,540" />
 			<Row a="Anchor v2" b="30,496 · 2,762, 2,292, 621, 2,991" />
 		</Table>
 		<Heading at="reading" title="Reading the table" />
 		<P>
 			Geass is the smallest program in four of five, and in 12 of 13 instructions no
-			build takes fewer units. The lazy Pinocchio vault is 64 bytes smaller, and{" "}
+			build takes fewer units. The lazy Pinocchio vault is 112 bytes smaller, and{" "}
 			<M t="rotate_authority" /> costs 8 units more than Anchor's and 6 more than
 			Pinocchio's.
 		</P>
