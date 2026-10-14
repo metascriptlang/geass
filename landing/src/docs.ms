@@ -28,9 +28,6 @@ import { Clients, Deploying, Testing } from "./docs/ship";
 import { FromAnchor, GettingStarted, SolanaBasics } from "./docs/start";
 import { Tokens } from "./docs/tokens";
 
-extern function whenAnchorPicked(report: (anchor: string) => void): void
-	from "((report) => { if (typeof location === 'undefined') { return; } const read = () => report(location.hash); addEventListener('hashchange', read); read(); })(#)";
-
 const START = ["/docs", "/docs/solana-basics", "/docs/from-anchor"];
 const CORE = [
 	"/docs/program", "/docs/accounts", "/docs/validation", "/docs/pdas", "/docs/cpi",
@@ -62,7 +59,6 @@ const NESTED = [
 ];
 const FORKED = ["#first-program", "#what-differs", "#proof-types"];
 const [picked, setPicked] = createSignal("");
-whenAnchorPicked((anchor: string) => { setPicked(anchor); });
 
 function shade(tone: string, to: string): string {
 	if (picked() === to) { return tone; }
@@ -117,8 +113,7 @@ export function createDocsSite(history: RoutingHistory): Result<DocsSite, Routin
 	const session = try createRoutingSession(registry, history, (failure: RoutingError): void => {});
 	return Result.ok({
 		path: accessor((): string => pathOf(address.get())),
-		open: (url: string): boolean =>
-			(anchorOf(url) === "" || pathOf(url) !== pathOf(address.get())) && session.navigate(url, false).ok,
+		open: (url: string): boolean => session.navigate(url, false).ok,
 		dispose: (): void => session.dispose(),
 	});
 }
