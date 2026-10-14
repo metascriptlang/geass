@@ -110,9 +110,8 @@ export function ErrorsEvents(): NeonNode {
 		</P>
 		<Sample code={RAISE_CODE} />
 		<P>
-			That conversion happens where a <M t="Result" /> is returned. Anywhere else
-			that takes a <M t="ProgramError" />, a decorator's error argument for one, call
-			the converter: <M t="escrowError(EscrowError.ZeroAmount)" />.
+			A decorator's error argument takes the member the same way:
+			<M t="@constraint(escrow.receive > 0, EscrowError.ZeroAmount)" />.
 		</P>
 		<Heading at="framework-errors" title="Framework errors" />
 		<P>

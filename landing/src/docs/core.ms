@@ -68,7 +68,7 @@ const TAKE_CODE = "export struct TakeAccounts {
   systemProgram: Program<System>;
 }";
 const ERROR_ARG_CODE = "@hasOne(authority, ProgramError.userError(0)) oracle: Mutable<Oracle>;";
-const ERROR_ENUM_CODE = "@hasOne(authority, oracleError(OracleError.NotTheAuthority)) oracle: Mutable<Oracle>;";
+const ERROR_ENUM_CODE = "@hasOne(authority, OracleError.NotTheAuthority) oracle: Mutable<Oracle>;";
 const TEST_DERIVE_CODE = "const vault = findProgramAddressOf(declaredProgramId(), [\"vault\", alice]);";
 const DEBIT_CODE = "const vault = x.vault.asAccount();
 const user = x.user.asAccount();
@@ -316,8 +316,8 @@ export function Validation(): NeonNode {
 		</P>
 		<Sample code={ERROR_ARG_CODE} />
 		<P>
-			The argument is a <M t="ProgramError" />. A member of your own error enum goes
-			through the enum's converter, written out:
+			The argument is a <M t="ProgramError" />, or a member of your own error enum,
+			which the enum's converter turns into one:
 		</P>
 		<Sample code={ERROR_ENUM_CODE} />
 		<Heading at="order" title="Order of checks" />
