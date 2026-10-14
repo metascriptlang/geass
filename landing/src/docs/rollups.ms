@@ -95,9 +95,7 @@ export function processUndelegation(): Result<uint64, ProgramError> {
   return undelegate(x.delegated.asAccount(), x.buffer, x.payer.asAccount(), programId(), data);
 }";
 const DELEGATED_FIELD_CODE = "@seeds(\"pet\", pet.mint) @bump(pet.bump) pet: Delegated<PetAccount>;";
-const UNPINNED_CODE = "error: accounts<ReadAccounts>(): field 'counter' is a Delegated<T>
-with no @seeds/@bump or @address: any account the delegation program owns
-with T's layout would pass";
+const UNPINNED_CODE = "error: Macro 'accounts': accounts<ReadAccounts>(): field 'counter' is a Delegated<T> with no @seeds/@bump or @address: any account the delegation program owns with T's layout would pass";
 const EITHER_CODE = "function claimant(holder: Account): Result<Claimant, ProgramError> {
   if (holder.owner() == DELEGATION_PROGRAM_ID) {
     const pet = try delegated<PetAccount>(PET_INDEX);
@@ -323,7 +321,8 @@ export function Rollups(): NeonNode {
 		<Heading at="delegated" title="Reading a delegated account" />
 		<P>
 			On the base layer a delegated account is a <M t="Delegated<T>" />: the last state
-			the rollup committed, read-only. Its owner is the delegation program (3007), and
+			the rollup committed, read-only. Its owner must be the delegation program (3007
+			otherwise), and
 			the discriminator and size are checked as for <M t="Owned<T>" />.
 		</P>
 		<Sample code={DELEGATED_FIELD_CODE} />
@@ -390,8 +389,9 @@ export function Randomness(): NeonNode {
 		<P>
 			<M t="programIdentity" /> is your program's PDA of the one seed{" "}
 			<M t="identity" />. It signs the request, and the call adds its seeds itself. A
-			payer that is a PDA signs through <M t="signed" />, as here. The queue is not
-			checked: compare it with <M t="VRF_EPHEMERAL_QUEUE_ID" />,{" "}
+			payer that is a PDA signs through <M t="signed" />, as here. The call checks that
+			the queue is writable and owned by the VRF program, not which queue it is:
+			compare it with <M t="VRF_EPHEMERAL_QUEUE_ID" />,{" "}
 			<M t="VRF_BASE_QUEUE_ID" /> or a key you store.
 		</P>
 		<Heading at="callback-id" title="Naming the callback" />
@@ -436,12 +436,12 @@ export function Cranks(): NeonNode {
 	return <>
 		<Title tone={tone.chain} title="MagicBlock cranks" />
 		<Lede t={"A crank stores one instruction of your program. Hydra, MagicBlock's crank program," +
-			" runs it on the rollup at the slot you name."} />
+			" lets anyone trigger it on the rollup once the slot you name is due."} />
 		<P>
-			Cranks exist on a MagicBlock ephemeral rollup, not on Solana's base layer.{" "}
-			<M t="std/solana/hydra" /> is the binding that creates and cancels them; the
-			scheduling is Hydra's. It is tested in the host simulator only, where a crank
-			is recorded and never fires. The samples are parts of a game, not whole
+			<M t="std/solana/hydra" /> binds Hydra's program on a MagicBlock ephemeral
+			rollup; Hydra's base-layer program is not bound. The binding creates and cancels
+			cranks; the scheduling is Hydra's. It is tested in the host simulator only, where a
+			crank is recorded and never fires. The samples are parts of a game, not whole
 			programs.
 		</P>
 		<Heading at="accounts" title="The accounts" />

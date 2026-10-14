@@ -1,9 +1,11 @@
 import { NeonNode } from "../../../../neon/src/render/node";
 import {
-	Head, Heading, L, Lede, M, P, Row, Sample, Subheading, Table, Title, tone,
+	Head, Heading, Lede, M, P, Row, Sample, Subheading, Table, Title, tone,
 } from "../ui/prose";
 
 const IMPORT_CODE = "import {
+  InterfaceMint,
+  InterfaceTokenAccount,
   Mint,
   TokenAccount,
   closeTokenAccount,
@@ -24,7 +26,7 @@ const REFUND_CODE = "export struct RefundAccounts {
 const READ_CODE = "const held = (try x.vault.read()).amount;";
 const EXPECT_CODE = "const _tokenProgram = try expectAddress(x.tokenProgram.key(), x.mint.owner());
 const destination = try x.destination.read();
-const _destinationMint = try expectTokenMint(destination, config.hbrnMint);
+const _destinationMint = try expectTokenMint(destination, escrow.mintA);
 const _destinationOwner = try expectTokenOwner(destination, x.owner.key());";
 const MINT_PDA_CODE = "const mint = x.mint.asAccount();
 const mintBump = try createMintPda(
@@ -61,21 +63,18 @@ const _released = try signed(
   transferTokens(x.vault, x.takerAtaA, x.mintA, escrowAccount, held),
   [\"escrow\", escrow.maker, leBytes(escrow.seed), [escrow.bump]],
 );";
-const RELEASE_CODE = "@tokenMint(mintA) @tokenAuthority(maker)
-makerAtaA: ExternalMutable<TokenAccount>;
-
-const _associated = try expectAssociated(
-  x.makerAtaA.key(), x.maker.key(), x.mintA,
-);";
 const CLOSE_CODE = "const _vaultClosed = try signed(
   closeTokenAccount(x.vault, x.maker.asWritable(), escrowAccount),
   [\"escrow\", escrow.maker, leBytes(escrow.seed), [escrow.bump]],
 );";
-const PIN_CODE = "@constraint(mint.owner() == TOKEN_PROGRAM_ID) mint: External<Mint>;";
-const MEMBER_CODE = "const mintAccount = mint.asAccount();
+const PIN_CODE = "@constraint(mint.owner() == TOKEN_2022_PROGRAM_ID)
+mint: External<InterfaceMint>;";
+const MEMBER_CODE = "import { groupMemberPointer, tokenGroupMember } from \"std/solana/token\";
+
+const mintAccount = x.mint.asAccount();
 const pointer = mintAccount.groupMemberPointer();
 const member = mintAccount.tokenGroupMember();
-if (!pointer.ok || !member.ok) { return Result.err(hibernalError(HibernalError.NotAdmitted)); }";
+if (!pointer.ok || !member.ok) { return Result.err(ProgramError.invalidAccountData()); }";
 
 export function Tokens(): NeonNode {
 	return <>
@@ -91,19 +90,31 @@ export function Tokens(): NeonNode {
 		</P>
 		<Sample code={IMPORT_CODE} />
 		<P>
-			A transfer, a mint or a close takes no token program. Each one sends to the
-			program that owns the mint, so the same handler serves Token and Token-2022, and
-			each refuses an owner that is neither. Only the calls that create an account
-			name the program to create it under.
+			A transfer, a mint or a burn takes no token program: it sends to the program
+			that owns the mint. A close sends to the program that owns the token account.
+			Each refuses an owner that is neither Token nor Token-2022. With the interface
+			types below, one handler serves both programs. <M t="createMintPda" /> and{" "}
+			<M t="createAssociatedFor" /> take the token program as an argument;{" "}
+			<M t="createTokenAccount" /> uses the mint's.
 		</P>
 		<Heading at="fields" title="Mints and token accounts" />
 		<Sample code={REFUND_CODE} />
 		<Table>
 			<Head a="FIELD TYPE" b="WHAT IT PROVES" />
-			<Row a="External<Mint>" b="Owned by Token or Token-2022, and an initialized mint" />
+			<Row a="External<Mint>" b="Owned by Token, exactly 82 bytes, an initialized mint" />
 			<Row
 				a="External<TokenAccount>"
-				b="Owned by Token or Token-2022, and an initialized or frozen token account"
+				b="Owned by Token, exactly 165 bytes, an initialized or frozen token account"
+			/>
+			<Row
+				a="External<InterfaceMint>"
+				b={"Owned by Token or Token-2022, an initialized mint, " +
+					"no extension that changes a transfer"}
+			/>
+			<Row
+				a="External<InterfaceTokenAccount>"
+				b={"Owned by either program, initialized or frozen, " +
+					"no extension that holds back an amount"}
 			/>
 			<Row a="ExternalMutable<…>" b="The same, and writable" />
 			<Row a="Program<Token>" b="The key is that program, and it is executable" />
@@ -113,8 +124,10 @@ export function Tokens(): NeonNode {
 			/>
 		</Table>
 		<P>
-			These cover both <M t="Account<Mint>" /> and <M t="InterfaceAccount<Mint>" />. A wrong
-			owner fails with 3007, bytes that are not that layout with 3003.
+			<M t="Mint" /> and <M t="TokenAccount" /> are Anchor's <M t="Account<Mint>" /> and{" "}
+			<M t="Account<TokenAccount>" />; the interface types are its{" "}
+			<M t="InterfaceAccount" />. A wrong owner fails with 3007, bytes that are not that
+			layout with 3003, and an extension an interface type does not accept with 4200.
 		</P>
 		<Subheading at="reading" title="Reading the fields" />
 		<P>
@@ -139,20 +152,6 @@ export function Tokens(): NeonNode {
 		</Table>
 		<P>
 			<M t="@associated" /> derives the address under the mint's own token program.
-		</P>
-		<Subheading at="release" title="@associated and --release, today" />
-		<P>
-			A compiler bug breaks this decorator in a <M t="--release" /> build: every
-			instruction whose accounts carry an <M t="@associated" /> field fails on chain
-			with <M t="Length of the seed is too long for address generation" />, while{" "}
-			<M t="msc test" /> passes. Until the fix is released, declare the field with the
-			other two decorators and check the address in the handler, which a release
-			build gets right:
-		</P>
-		<Sample code={RELEASE_CODE} />
-		<P>
-			Either way, run the built program in LiteSVM before you deploy.{" "}
-			<L to="/docs/testing#litesvm" t="Testing" /> shows how.
 		</P>
 		<Subheading at="calls" title="The checks as calls" />
 		<P>
@@ -183,7 +182,7 @@ export function Tokens(): NeonNode {
 		</P>
 		<Sample code={ASSOCIATED_CODE} />
 		<P>
-			The associated token program must be among the instruction's accounts for this
+			Pass the associated token program among the instruction's accounts for this
 			call; an <M t="Account" /> field is enough.{" "}
 			<M t="createAssociatedTokenIdempotent" /> is <M t="init_if_needed" /> for an
 			associated account. It takes the same six accounts as plain{" "}
@@ -206,24 +205,40 @@ export function Tokens(): NeonNode {
 		<Sample code={CLOSE_CODE} />
 		<Heading at="token-2022" title="Token-2022 and extensions" />
 		<P>
-			Accepting both programs takes nothing. To accept one, constrain the owner of the
-			mint:
+			An <M t="External<InterfaceMint>" /> accepts a mint of either program. To accept
+			one, constrain the owner of the mint:
 		</P>
 		<Sample code={PIN_CODE} />
+		<P>
+			An interface type accepts only the extensions that leave a transfer and a balance
+			as they read: metadata, groups, the close authority, interest-bearing and scaled
+			UI amounts on a mint; immutable owner, memo transfer and the CPI guard on a token
+			account. A transfer fee, a transfer hook, a permanent delegate, a pause switch, a
+			default state, non-transferable or confidential transfers fail with 4200 before
+			the handler runs.
+		</P>
 		<P>
 			<M t="mintExtension(kind)" /> and <M t="tokenAccountExtension(kind)" /> are
 			methods of an <M t="Account" />. They take a member of{" "}
 			<M t="ExtensionType" /> from <M t="std/solana/token" /> and return the bytes of
 			that extension, or an error when the account does not carry it. Two are decoded
-			for you, the group member pointer and the group member:
+			for you, the group member pointer and the group member, here for a field{" "}
+			<M t="mint: External<InterfaceMint>" />:
 		</P>
 		<Sample code={MEMBER_CODE} />
 		<Heading at="from-anchor" title="Anchor to Geass" />
 		<Table>
 			<Head a="ANCHOR" b="GEASS" />
-			<Row a="Account<Mint>, InterfaceAccount<Mint>" b="External<Mint>" />
+			<Row
+				a="Account<Mint>, Account<TokenAccount>"
+				b="External<Mint>, External<TokenAccount>"
+			/>
+			<Row
+				a="InterfaceAccount<Mint>, InterfaceAccount<TokenAccount>"
+				b="External<InterfaceMint>, External<InterfaceTokenAccount>"
+			/>
 			<Row a="#[account(mut)] on a token account" b="ExternalMutable<TokenAccount>" />
-			<Row a="mint.supply(), token.amount()" b="read().supply, read().amount" />
+			<Row a="mint.supply, token.amount" b="read().supply, read().amount" />
 			<Row a="token::mint = mint" b="@tokenMint(mint)" />
 			<Row a="token::authority = wallet" b="@tokenAuthority(wallet)" />
 			<Row a="associated_token::mint, ::authority" b="@associated(mint, wallet)" />
@@ -239,17 +254,17 @@ export function Tokens(): NeonNode {
 		</Table>
 		<Heading at="not-yet" title="Not there yet" />
 		<P>
-			A token account that is not an associated one cannot be created, the transfer is
-			always the checked one, and there are no calls for burn, approve, freeze or
-			set-authority; those go through <M t="invoke" />. <M t="transferTokens" /> sends
-			exactly four accounts, so the extra accounts of a transfer hook cannot be passed.
+			<M t="burnTokens" />, <M t="approveDelegate" />, <M t="revokeDelegate" />,{" "}
+			<M t="setAuthorityOf" /> and <M t="createTokenAccount" /> exist; there is no call
+			for freeze, thaw or wrapped SOL, and those go through <M t="invoke" />. The
+			transfer is always the checked one. <M t="transferTokens" /> sends exactly four
+			accounts, so the extra accounts of a transfer hook cannot be passed.
 		</P>
 		<P>
-			Nothing helps with a mint that charges a transfer fee: the destination
-			receives less than the amount sent, and a vault that records the amount sent is
-			then short. Read the extension and refuse the mint, or measure the balance
-			before and after. There is no call for wrapped SOL, and no fixture that builds
-			a mint or a token account for a test; a test writes those bytes itself.
+			A mint with a transfer fee or a transfer hook is refused by the interface types,
+			not handled: accepting one is a change to the std, not a handler option. There
+			is no fixture that builds a mint or a token account for a test; a test writes
+			those bytes itself.
 		</P>
 	</>;
 }

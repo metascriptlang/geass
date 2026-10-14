@@ -4,8 +4,7 @@ import {
 } from "../ui/prose";
 
 const DANGER_CODE = "$ msc build program.ms --os=solana --danger
-error: --danger is refused on --os=solana: it drops the bound, range,
-object and division checks that guard a program fed adversarial input
+error: --danger is refused on --os=solana: it drops the bound, range, object and division checks that guard a program fed adversarial input
   → use --release, which links with LTO on this target";
 const GUARD_CODE = "const limit: uint64 = 1000000;
 if (amount > limit || counter.value > limit - amount) {
@@ -69,8 +68,9 @@ export function Security(): NeonNode {
 		<Sample code={DANGER_CODE} />
 		<Heading at="narrowing" title="An unsigned cast keeps the low bits" />
 		<P>
-			<M t="as" /> between unsigned integers does not stop: <M t="256 as uint8" /> is
-			0 and <M t="300 as uint8" /> is 44. The compiler asks for the cast wherever a
+			<M t="as" /> between unsigned integers does not stop: a <M t="uint16" /> holding 256
+			cast to <M t="uint8" /> is 0, and one holding 300 is 44. A constant that does not
+			fit is a compile error. The compiler asks for the cast wherever a
 			wider value meets a narrower slot, so compare first when the value comes from an
 			instruction:
 		</P>
@@ -84,7 +84,7 @@ export function Security(): NeonNode {
 		<Sample code={GUARD_CODE} />
 		<Heading at="refused" title="Refused at compile time" />
 		<Table>
-			<Head a="YOU WRITE" b="THE BUILD SAYS" />
+			<Head a="YOU WRITE" b="WHAT HAPPENS" />
 			<Row a="A proof by cast or struct literal" b="Refused. A proof comes from a check" />
 			<Row a="A write through Owned<T>" b="The data is read-only" />
 			<Row a="A module-level let" b="A program has no writable static storage" />
@@ -102,7 +102,7 @@ export function Security(): NeonNode {
 			<Row a="Stack" b="4,096 bytes for each function" />
 			<Row a="Heap" b="32 KiB, never freed" />
 			<Row a="Accounts of an instruction" b="255" />
-			<Row a="Accounts of a CPI" b="64" />
+			<Row a="Account infos of a CPI" b="64" />
 			<Row a="An event" b="1,024 bytes" />
 			<Row a="Account growth" b="10,240 bytes in one instruction" />
 		</Table>
@@ -130,11 +130,7 @@ export function Security(): NeonNode {
 		<Table>
 			<Head a="TODAY" b="WHAT TO DO" />
 			<Row
-				a="@associated passes its tests and fails on chain when built with --release"
-				b="Call expectAssociated in the handler. See Tokens"
-			/>
-			<Row
-				a="The test simulator accepts CPIs the chain refuses"
+				a="The test simulator accepts a CPI whose program is not among the accounts"
 				b="Run the built program in LiteSVM too. See Testing"
 			/>
 			<Row

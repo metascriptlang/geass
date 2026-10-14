@@ -70,9 +70,23 @@ const TAKE_CODE = "export struct TakeAccounts {
 const ERROR_ARG_CODE = "@hasOne(authority, ProgramError.userError(0)) oracle: Mutable<Oracle>;";
 const ERROR_ENUM_CODE = "@hasOne(authority, OracleError.NotTheAuthority) oracle: Mutable<Oracle>;";
 const TEST_DERIVE_CODE = "const vault = findProgramAddressOf(declaredProgramId(), [\"vault\", alice]);";
-const DEBIT_CODE = "const vault = x.vault.asAccount();
+const WITHDRAW_CODE = "export struct WithdrawAccounts {
+  user: WritableSigner;
+  @seeds(\"vault\", user) @bump vault: WritablePda;
+  systemProgram: Program<System>;
+}
+
+function withdraw(): Result<uint64, ProgramError> {
+  const given = try args<AmountArgs>();
+  const x = try accounts<WithdrawAccounts>();
+  return signed(
+    transfer(x.vault.asAccount(), x.user.asAccount(), given.amount),
+    [\"vault\", x.user, [x.vault.foundBump()]],
+  );
+}";
+const DEBIT_CODE = "const pool = x.pool.asAccount();
 const user = x.user.asAccount();
-vault.setLamports(vault.lamports() - given.amount);
+pool.setLamports(pool.lamports() - given.amount);
 user.setLamports(user.lamports() + given.amount);";
 const VAULT_CODE = "export struct DepositAccounts {
   user: WritableSigner;
@@ -188,7 +202,7 @@ export function Accounts(): NeonNode {
 		<Heading at="proof-types" title="Proof types" />
 		<P>
 			Each type is a proof: a value only the toolkit builds, after the checks pass. The
-			codes are Anchor's.
+			codes are Anchor v1's; Anchor v2 maps several of them to builtin errors.
 		</P>
 		<Subheading at="signers" title="Signers and plain accounts" />
 		<Table>
@@ -207,7 +221,7 @@ export function Accounts(): NeonNode {
 				b="Program<P>. The key is P's id (3008) and it is executable (3009)"
 			/>
 		</Table>
-		<Subheading at="program-accounts" title="Accounts your program owns" />
+		<Subheading at="program-accounts" title="Accounts of your program's layout" />
 		<Table>
 			<Head a="TYPE" b="ANCHOR, AND WHAT IT CHECKS" />
 			<Row
@@ -388,8 +402,9 @@ export function Pdas(): NeonNode {
 		<Heading at="folded" title="Literal seeds cost nothing" />
 		<P>
 			When every seed is a literal and the program id is declared, the address and its
-			bump are computed by the compiler. The check on chain is one key compare: 9
-			compute units in a measured program, against 348 for a seed that is an account.
+			bump are computed by the compiler. The check on chain is one key compare: 10
+			compute units in a measured program, against 347 for a seed that is an account
+			whose bump is 255, and about 320 more for each lower bump the search tries.
 		</P>
 		<P>
 			The address is then a constant of the build. The same file deployed under
@@ -411,8 +426,16 @@ export function Cpi(): NeonNode {
 		<P>
 			The System program moves lamports only out of an account it owns that holds no
 			data, and only when that account signed: a wallet, or an empty PDA signed for
-			with <M t="signed" />. An account your program owns pays out without a CPI. The
-			program moves the lamports itself:
+			with <M t="signed" />. The vault is such a PDA: a transfer into an address that
+			holds nothing leaves it owned by the System program. Its withdraw signs the
+			transfer with the vault's seeds:
+		</P>
+		<Sample code={WITHDRAW_CODE} />
+		<P>
+			An account your program owns, such as a <M t="pool: Mutable<Pool>" /> it created,
+			pays out without a CPI; the program moves the lamports itself. Done to the vault,
+			this fails on chain with <M t="ExternalAccountLamportSpend" />, because the
+			vault's owner is the System program:
 		</P>
 		<Sample code={DEBIT_CODE} />
 		<Heading at="signing" title="Signing with a PDA" />

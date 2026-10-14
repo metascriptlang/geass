@@ -116,7 +116,7 @@ export function ErrorsEvents(): NeonNode {
 		<Heading at="framework-errors" title="Framework errors" />
 		<P>
 			<M t="ProgramError" /> also carries the runtime's builtin errors and Anchor's own
-			codes with Anchor's numbers, so a failed check reads the same in an explorer:
+			codes with Anchor v1's numbers, so a failed check reads the same in an explorer:
 			2006 for seeds, 3007 for a wrong owner, 3010 for a missing signature.
 		</P>
 		<Heading at="events" title="Events" />

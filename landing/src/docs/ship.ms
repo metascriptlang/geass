@@ -227,9 +227,7 @@ const ID_CODE = "const config = {
   },
 };
 export default config;";
-const KEYPAIR_ERROR_CODE = "error: the build declares programId B7ihZy…Smn32, but the deploy keypair
-'target/deploy/counter-keypair.json' is program 3Ldjuq…Z4Xp: set programId to
-3Ldjuq…Z4Xp, or deploy with the keypair of B7ihZy…Smn32";
+const KEYPAIR_ERROR_CODE = "error: Macro 'instruction': the build declares programId B7ihZy…Smn32, but the deploy keypair '<project>/target/deploy/counter-keypair.json' is program 3Ldjuq…Z4Xp: set programId to 3Ldjuq…Z4Xp, or deploy with the keypair of B7ihZy…Smn32";
 const KEYGEN_CODE = "$ solana-keygen new --no-bip39-passphrase -o target/deploy/counter-keypair.json
 $ solana address -k target/deploy/counter-keypair.json";
 const DEPLOY_CODE = "$ solana program deploy --program-id target/deploy/counter-keypair.json out/counter.so
@@ -278,18 +276,21 @@ export function Testing(): NeonNode {
 		<Sample code={TEST_RUN_CODE} />
 		<Heading at="simulator" title="What the simulator runs" />
 		<P>
-			System create, assign, transfer and allocate, Token and Token-2022 transfer, mint
-			and close, and the creation of an associated token account are executed. Every
-			other CPI is recorded and answers success. Compute units are not metered here;
-			measure them in LiteSVM.
+			System create, assign, transfer and allocate; Token and Token-2022 transfer,
+			mint, burn, approve, revoke, set-authority, close and the initialization of an
+			account or a mint; and the creation of an associated token account are executed.
+			An instruction of those programs that the simulator does not model ends the run
+			with <M t="NOT_SIMULATED" />. A CPI to any other program is recorded and answers
+			success. Compute units are not metered here; measure them in LiteSVM.
 		</P>
 		<P>
-			The simulator runs your program's checks, not the chain's. Three things pass
-			here and fail on chain: a System transfer out of an account that holds data, a
-			PDA that pays or signs without <M t="signed" />, and a CPI whose program is
-			missing from the instruction's accounts. A green test proves your handler's
-			logic; the CPIs are proven by the next layer, so run every instruction in
-			LiteSVM before you deploy.
+			The simulator runs your program's checks and most of the runtime's: it refuses
+			a System transfer out of an account that holds data, a signer that neither
+			signed nor derives from the seeds you pass, and a program that spends lamports
+			or writes data of an account it does not own. A CPI whose program is missing
+			from the instruction's accounts still passes here and fails on chain. A green
+			test proves your handler's logic; run every instruction in LiteSVM before you
+			deploy.
 		</P>
 		<P>
 			<M t="setClock" /> sets what <M t="clock()" /> reads, and <M t="logs()" /> returns
@@ -398,12 +399,12 @@ export function Clients(): NeonNode {
 		<Heading at="metascript-client" title="A client in MetaScript" />
 		<P>
 			Declare account types in a module the program and the client share. On the
-			JavaScript target <M t="std/solana" /> has the same <M t="Pubkey" />, the
-			discriminators, PDA derivation, a Borsh writer and the account codec, which checks
-			what the program checks. <M t="BorshWriter" /> exists on that target only, and
-			its <M t="bytes" /> are the instruction data; sending is your RPC library's
-			job. For a counter whose <M t="Counter" /> struct is in <M t="layout.ms" /> and
-			whose <M t="Add" /> instruction takes one <M t="uint64" />:
+			JavaScript target and on your own machine, <M t="std/solana" /> has the same{" "}
+			<M t="Pubkey" />, the discriminators, PDA derivation, a Borsh writer and reader
+			and the account codec, which checks what the program checks. The{" "}
+			<M t="bytes" /> of a <M t="BorshWriter" /> are the instruction data; sending is
+			your RPC library's job. For a counter whose <M t="Counter" /> struct is in{" "}
+			<M t="layout.ms" /> and whose <M t="Add" /> instruction takes one <M t="uint64" />:
 		</P>
 		<Sample code={MS_CLIENT_CODE} />
 		<Sample code={MS_CLIENT_RUN_CODE} />
@@ -460,9 +461,10 @@ export function Deploying(): NeonNode {
 		<Sample code={KEYGEN_CODE} />
 		<P>
 			With <M t="programKeypair" /> the build reads the public half of the keypair file
-			and stops when it is not the declared id. Keep the file out of version control:
+			and stops when it is not the declared id:
 		</P>
 		<Sample code={KEYPAIR_ERROR_CODE} />
+		<P>Keep the keypair file out of version control.</P>
 		<Heading at="deploy" title="Deploying" />
 		<Sample code={DEPLOY_CODE} />
 		<Heading at="from-anchor" title="Anchor to Geass" />

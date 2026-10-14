@@ -78,8 +78,10 @@ export function GettingStarted(): NeonNode {
 		</P>
 		<Sample code={VERSION_CODE} />
 		<P>
-			The first build asks to download Zig as its C compiler, about 400 MB; pass{" "}
-			<M t="--cc=clang" /> to use the one you have.
+			The first build for your own machine, such as <M t="msc test" />, asks before it
+			downloads Zig 0.16.0 as its C compiler: about 55 MB to download (97 MB on
+			Windows), about 400 MB once unpacked on a Mac. Pass <M t="--cc=clang" /> to use
+			the one you have. A build for Solana does not use Zig.
 		</P>
 		<Subheading at="solana-toolchain" title="The Solana toolchain" />
 		<P>
@@ -374,9 +376,10 @@ export function FromAnchor(): NeonNode {
 		</P>
 		<Subheading at="types-first" title="Types first, then decorators" />
 		<P>
-			Anchor checks an accounts struct field by field. Geass checks the type of every
-			field first and the decorators after, so a transaction with two faults can get
-			a different error code than Anchor gives it.{" "}
+			Both check the type of every field first and the constraints after. Anchor's{" "}
+			<M t="mut" /> is a constraint; in Geass, writable is part of the field's type. So
+			a read-only account in a <M t="Mutable" /> field and a wrong owner in the next
+			field fail with 2000 here and 3007 in Anchor.{" "}
 			<L to="/docs/validation#order" t="Order of checks" /> has the rule.
 		</P>
 		<Subheading at="no-lifetimes" title="No lifetimes, no derives" />
@@ -395,10 +398,11 @@ export function FromAnchor(): NeonNode {
 			length beside it.
 		</P>
 		<P>
-			Three have no short form: a text log like <M t="msg!" /> (a program logs
-			numbers, keys and events), a typed call into another program from its IDL like{" "}
+			Two have no short form: a typed call into another program from its IDL like{" "}
 			<M t="declare_program!" />, and failure logs that name the account that failed.
-			A failed check logs its error code and nothing else.
+			A failed check logs its error code and nothing else. <M t="logText" /> is{" "}
+			<M t="msg!" />; <M t="logU64" />, <M t="logPubkey" /> and <M t="emit" /> log
+			numbers, keys and events.
 		</P>
 	</>;
 }

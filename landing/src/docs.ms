@@ -511,7 +511,6 @@ export function Docs(props: { site: DocsSite }): NeonNode {
 				<Part title="One module, two programs" at="module" />
 				<Part title="Mints and token accounts" at="fields" />
 				<Part title="Checking a token account" at="checks" />
-				<Part title="@associated and --release" at="release" />
 				<Part title="Creating a mint" at="create-mint" />
 				<Part title="Creating a token account" at="create-account" />
 				<Part title="Minting" at="mint-to" />
