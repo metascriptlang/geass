@@ -23,7 +23,11 @@ export function PagePlace(props: { path: Accessor<string> }): NeonNode {
 		<link rel="canonical" href={SITE + props.path()} />
 		<meta property="og:url" content={SITE + props.path()} />
 		<meta property="og:type" content="website" />
-		<meta name="twitter:card" content="summary" />
+		<meta property="og:image" content={SITE + "/og.jpg"} />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content="Geass, MetaScript for Solana: the mech bust" />
+		<meta name="twitter:card" content="summary_large_image" />
 	</Head>;
 }
 
