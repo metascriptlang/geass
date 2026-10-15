@@ -3,7 +3,7 @@ import {
 	Head, Heading, L, Lede, M, P, Row, Sample, Subheading, Table, Title, tone,
 } from "../ui/prose";
 
-const DANGER_CODE = "$ msc build program.ms --os=solana --danger
+const DANGER_CODE = "$ msc build src/index.ms --os=solana --danger
 error: --danger is refused on --os=solana: it drops the bound, range, object and division checks that guard a program fed adversarial input
   → use --release, which links with LTO on this target";
 const GUARD_CODE = "const limit: uint64 = 1000000;
@@ -79,8 +79,9 @@ export function Security(): NeonNode {
 		<Heading at="overflow" title="Integer overflow is yours" />
 		<P>
 			<M t="+" />, <M t="-" /> and <M t="*" /> wrap without an error, as in a Rust
-			program built with <M t="overflow-checks = false" />: on a <M t="uint64" />,
-			1 minus 2 is 18,446,744,073,709,551,615. Compare before you subtract or add:
+			program built with <M t="overflow-checks = false" />. A TypeScript number turns
+			imprecise past 2⁵³; a <M t="uint64" /> wraps instead: 1 minus 2 is
+			18,446,744,073,709,551,615. Compare before you subtract or add:
 		</P>
 		<Sample code={GUARD_CODE} />
 		<Heading at="refused" title="Refused at compile time" />

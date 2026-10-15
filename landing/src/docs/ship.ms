@@ -5,59 +5,67 @@ import {
 
 const TEST_CODE = "when (testBuild) {
   import {
-    Pubkey, SYSTEM_PROGRAM_ID, declaredProgramId, findProgramAddressOf, instructionDiscriminator,
+    Pubkey, SYSTEM_PROGRAM_ID, declaredProgramId, decode, findProgramAddressOf,
+    instructionDiscriminator,
   } from \"std/solana\";
   import { HostAccount, run } from \"std/solana/host\";
 
-  function holder(key: Pubkey, lamports: uint64, signer: boolean): HostAccount {
+  function wallet(id: uint8): HostAccount {
+    let key = Pubkey.zero();
+    key.bytes[0] = id;
     return {
-      key: key, owner: SYSTEM_PROGRAM_ID, lamports: lamports, data: [],
-      signer: signer, writable: true, executable: false,
+      key: key, owner: SYSTEM_PROGRAM_ID, lamports: 1000000000, data: [],
+      signer: true, writable: true, executable: false,
     };
   }
 
-  function initAccounts(): HostAccount[] {
-    let payer = Pubkey.zero();
-    payer.bytes[0] = 1;
-    const counter = findProgramAddressOf(declaredProgramId(), [\"counter\"]);
-    if (!counter.ok) { return []; }
-    const system = {
-      ...holder(SYSTEM_PROGRAM_ID, 1, false),
-      owner: Pubkey.zero(), writable: false, executable: true,
+  function counterAccount(): HostAccount {
+    const found = findProgramAddressOf(declaredProgramId(), [\"counter\"]);
+    return {
+      key: found.ok ? found.value.key : Pubkey.zero(), owner: SYSTEM_PROGRAM_ID, lamports: 0,
+      data: [], signer: false, writable: true, executable: false,
     };
-    return [holder(payer, 10000000000, true), holder(counter.value.key, 0, false), system];
   }
 
-  function initData(): uint8[] {
-    const tag = instructionDiscriminator(\"Init\");
+  function systemProgram(): HostAccount {
+    return {
+      key: SYSTEM_PROGRAM_ID, owner: Pubkey.zero(), lamports: 1, data: [],
+      signer: false, writable: false, executable: true,
+    };
+  }
+
+  function call(name: string): uint8[] {
+    const tag = instructionDiscriminator(name);
     const bytes: uint8[] = [];
     for (let i = 0; i < 8; i++) { bytes.push(tag.bytes[i]); }
     return bytes;
   }
 
-  test \"init creates the counter\" {
-    const accounts = initAccounts();
-    assert run(declaredProgramId(), accounts, initData(), entry).result == 0;
-    assert accounts[1].owner == declaredProgramId() && accounts[1].data[8] == 42;
+  function countOf(account: HostAccount): uint64 {
+    const counter = decode<Counter>(account.data);
+    return counter.ok ? counter.value.count : 999;
   }
 
-  test \"a counter off the address is refused\" {
-    const accounts = initAccounts();
-    accounts[1].key.bytes[31] = accounts[1].key.bytes[31] ^ 1;
-    const code = ProgramError.constraintSeeds().code;
-    assert run(declaredProgramId(), accounts, initData(), entry).result == code;
+  test \"create, then increment twice\" {
+    const created = [wallet(1), counterAccount(), systemProgram()];
+    assert run(declaredProgramId(), created, call(\"Create\"), entry).result == 0;
+    const incremented = [created[0], created[1]];
+    assert run(declaredProgramId(), incremented, call(\"Increment\"), entry).result == 0;
+    assert run(declaredProgramId(), incremented, call(\"Increment\"), entry).result == 0;
+    assert countOf(incremented[1]) == 2;
   }
 
-  test \"an unsigned payer is refused\" {
-    const accounts = initAccounts();
-    accounts[0].signer = false;
-    const code = ProgramError.accountNotSigner().code;
-    assert run(declaredProgramId(), accounts, initData(), entry).result == code;
+  test \"a stranger cannot increment\" {
+    const created = [wallet(1), counterAccount(), systemProgram()];
+    assert run(declaredProgramId(), created, call(\"Create\"), entry).result == 0;
+    const stranger = [wallet(2), created[1]];
+    assert run(declaredProgramId(), stranger, call(\"Increment\"), entry).result == 6000;
+    assert countOf(stranger[1]) == 0;
   }
 }";
-const TEST_RUN_CODE = "$ msc test program.ms --tests-in-dir
+const TEST_RUN_CODE = "$ msc test src/index.ms --tests-in-dir
  Test Files  1 passed (1)
-      Tests  3 passed (3)";
+      Tests  2 passed (2)";
 const CLOCK_CODE = "import { invocations, logs, setClock, signerIs } from \"std/solana/host\";
 
 setClock({
@@ -219,7 +227,7 @@ const call = (name, accounts, ...args) => ({
 
 const add = (authority, counter, amount) =>
   call(\"Add\", [signerOf(authority), writable(counter)], u64(amount));";
-const BUILD_CODE = "$ msc build program.ms --os=solana --release --output=out/counter.so";
+const BUILD_CODE = "$ msc build src/index.ms --os=solana --release --output=out/counter.so";
 const ID_CODE = "const config = {
   defines: {
     programId: \"8JK1ZEmm83T8pHj4t59zsKp6meNW7GYhooWcRmh57ori\",
@@ -246,12 +254,13 @@ export function Testing(): NeonNode {
 		<P>
 			<M t="std/solana/host" /> is the simulator. <M t="run" /> builds the input the
 			loader would, calls your entry, writes owner, lamports and data back into the same
-			account list and returns the program's result. The <M t="when (testBuild)" /> block
-			keeps the tests and their imports out of the program:
+			account list and returns the program's result.
 		</P>
 		<P>
-			This is the whole test of the counter from Getting started. Put it at the end
-			of <M t="program.ms" />:
+			<L to="/docs/first-program#test" t="Your first program" /> keeps its tests in a
+			file of their own. They can also sit at the end of the program: a{" "}
+			<M t="when (testBuild)" /> block keeps the tests and their imports out of the
+			built program. The counter's tests, at the end of <M t="src/index.ms" />:
 		</P>
 		<Sample code={TEST_CODE} />
 		<P>
@@ -332,13 +341,13 @@ export function Testing(): NeonNode {
 			<Head a="ANCHOR" b="GEASS" />
 			<Row
 				a="anchor test"
-				b="msc test program.ms --tests-in-dir, then a Node script on LiteSVM"
+				b="msc test src/index.ms --tests-in-dir, then a Node script on LiteSVM"
 			/>
 			<Row a="LiteSVM in Rust tests" b="The host simulator, in MetaScript" />
 			<Row a="anchor test --profile" b="None. computeUnitsConsumed(), logComputeUnits()" />
 			<Row a="anchor debugger, anchor coverage" b="None" />
 			<Row a="the .so.debug file" b="out/counter.so.debug, the unstripped program" />
-			<Row a="cargo check" b="msc check program.ms" />
+			<Row a="cargo check" b="msc check src/index.ms" />
 		</Table>
 	</>;
 }
@@ -470,7 +479,7 @@ export function Deploying(): NeonNode {
 		<Heading at="from-anchor" title="Anchor to Geass" />
 		<Table>
 			<Head a="ANCHOR" b="GEASS" />
-			<Row a="anchor build" b="msc build program.ms --os=solana --release" />
+			<Row a="anchor build" b="msc build src/index.ms --os=solana --release" />
 			<Row a="anchor idl build" b="msc run idl.ms > program.json" />
 			<Row a="anchor deploy" b="solana program deploy" />
 			<Row a="anchor keys sync" b="programKeypair: the build stops, you edit the id" />

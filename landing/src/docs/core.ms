@@ -1,6 +1,6 @@
 import { NeonNode } from "../../../../neon/src/render/node";
 import {
-	Head, Heading, L, Lede, M, P, Row, Sample, Subheading, Table, Title, tone,
+	Head, Heading, L, Lede, M, P, Row, Sample, Subheading, Table, Title, Warning, tone,
 } from "../ui/prose";
 
 const ID_CODE = "const config = {
@@ -144,8 +144,8 @@ export function ProgramStructure(): NeonNode {
 		</P>
 		<Sample code={IMPORT_CODE} />
 		<P>
-			The whole vault, with a scenario that runs it, is the Vault example in the{" "}
-			<L to="/playground" t="Playground" />.
+			The whole vault, with a scenario that runs it, is the{" "}
+			<L to="/playground#vault" t="Vault example in the Playground" />.
 		</P>
 		<P>
 			With an id declared, a PDA whose seeds are all literals is derived at compile time,
@@ -179,11 +179,11 @@ export function ProgramStructure(): NeonNode {
 			carry its own tests:
 		</P>
 		<Sample code={ENTRY_CODE} />
-		<P>
-			A file without that call still builds and passes tests that hand{" "}
+		<Warning>
+			With msc 0.3.3 a file without that call still builds and passes tests that hand{" "}
 			<M t="entry" /> to the simulator. On chain it does nothing and reports success
 			for every instruction, so check that the block is there before you deploy.
-		</P>
+		</Warning>
 	</>;
 }
 
@@ -221,7 +221,7 @@ export function Accounts(): NeonNode {
 				b="Program<P>. The key is P's id (3008) and it is executable (3009)"
 			/>
 		</Table>
-		<Subheading at="program-accounts" title="Accounts of your program's layout" />
+		<Subheading at="program-accounts" title="Accounts your program owns" />
 		<Table>
 			<Head a="TYPE" b="ANCHOR, AND WHAT IT CHECKS" />
 			<Row
@@ -431,6 +431,10 @@ export function Cpi(): NeonNode {
 			transfer with the vault's seeds:
 		</P>
 		<Sample code={WITHDRAW_CODE} />
+		<P>
+			The <L to="/playground#vault" t="Vault example in the Playground" /> runs both,
+			and a withdraw that is not the owner's.
+		</P>
 		<P>
 			An account your program owns, such as a <M t="pool: Mutable<Pool>" /> it created,
 			pays out without a CPI; the program moves the lamports itself. Done to the vault,

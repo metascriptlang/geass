@@ -1,6 +1,6 @@
 import { NeonNode } from "../../../../neon/src/render/node";
 import {
-	Head, Heading, Lede, M, P, Row, Sample, Subheading, Table, Title, tone,
+	Head, Heading, L, Lede, M, P, Row, Sample, Subheading, Table, Title, tone,
 } from "../ui/prose";
 
 const IMPORT_CODE = "import {
@@ -96,6 +96,11 @@ export function Tokens(): NeonNode {
 			types below, one handler serves both programs. <M t="createMintPda" /> and{" "}
 			<M t="createAssociatedFor" /> take the token program as an argument;{" "}
 			<M t="createTokenAccount" /> uses the mint's.
+		</P>
+		<P>
+			The <L to="/playground#escrow" t="Escrow example in the Playground" /> puts these
+			calls in one program: a maker locks tokens in a vault, a taker pays and takes
+			them, and the maker can take them back with a refund.
 		</P>
 		<Heading at="fields" title="Mints and token accounts" />
 		<Sample code={REFUND_CODE} />

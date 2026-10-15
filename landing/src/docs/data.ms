@@ -40,7 +40,7 @@ emit<Made>(made);";
 
 export function AccountData(): NeonNode {
 	return <>
-		<Title tone={tone.build} title="Account data" />
+		<Title tone={tone.core} title="Account data" />
 		<Lede t={"State is a fixed-size struct read in place. Creating, resizing and closing an " +
 			"account are calls in the handler."} />
 		<Heading at="declaring" title="Declaring an account type" />
@@ -95,7 +95,7 @@ export function AccountData(): NeonNode {
 
 export function ErrorsEvents(): NeonNode {
 	return <>
-		<Title tone={tone.build} title="Errors and events" />
+		<Title tone={tone.core} title="Errors and events" />
 		<Lede t={"Errors are an enum, events are a struct. Both reach clients with Anchor's numbers " +
 			"and Anchor's bytes."} />
 		<Heading at="errors" title="Your program's errors" />
