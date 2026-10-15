@@ -13,8 +13,8 @@ extern class HTMLElement {
 	id: string;
 }
 
-extern function loadBench(host: HTMLElement, whenRun: () => void, done: () => void): void
-	from "((host, whenRun, done) => import('playground-editor').then((bench) => { globalThis.geassBench = bench; bench.mount(host, whenRun); done(); }))(#, #, #)";
+extern function loadBench(host: HTMLElement, whenRun: () => void, done: (shown: int32) => void): void
+	from "((host, whenRun, done) => import('playground-editor').then((bench) => { globalThis.geassBench = bench; done(bench.mount(host, whenRun)); }))(#, #, #)";
 
 extern function showExample(index: int32): void from "globalThis.geassBench.example(#)";
 
@@ -205,7 +205,7 @@ function execute(): void {
 }
 
 function startBench(node: HostNode): void {
-	loadBench(node as unknown as HTMLElement, execute, () => { setReady(true); });
+	loadBench(node as unknown as HTMLElement, execute, (at: int32): void => { setShown(at); setReady(true); });
 }
 
 function toneOf(line: string): "" | "passed" | "refused" | "detail" {

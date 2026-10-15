@@ -4,6 +4,7 @@ import vault from "./vault.txt?raw";
 import escrow from "./escrow.txt?raw";
 
 const EXAMPLES = [hello, counter, vault, escrow];
+const NAMES = ["hello", "counter", "vault", "escrow"];
 const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
 const RUNNER = LOCAL ? "http://127.0.0.1:8787/run" : "https://run.metascriptlang.org/run";
 const SHARED = "#code=";
@@ -76,7 +77,10 @@ export function mount(host, whenRun) {
 			paint();
 		}
 	});
-	setCode(sharedCode() ?? EXAMPLES[0]);
+	const shared = sharedCode();
+	const named = Math.max(NAMES.indexOf(location.hash.slice(1)), 0);
+	setCode(shared ?? EXAMPLES[named]);
+	return shared === null ? named : -1;
 }
 
 export function setCode(text) {

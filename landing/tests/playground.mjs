@@ -36,6 +36,11 @@ try {
 		await page.getByText(tab, { exact: true }).click();
 		await page.waitForFunction(([opens]) => document.querySelector(".pg-editor textarea").value.includes(opens), [opens]);
 	}
+	const named = await browser.newPage();
+	await named.goto(`http://127.0.0.1:${port}/playground#escrow`, { waitUntil: "load" });
+	await named.waitForFunction(() => document.querySelector(".pg-editor textarea")?.value.includes("export enum EscrowOp"));
+	assert.equal(await named.getByRole("button", { name: "Escrow" }).evaluate(tab => getComputedStyle(tab).boxShadow.includes("inset")), true, "the named example's tab is not shown as picked");
+	await named.close();
 	reply = { success: false, stdout: "", stderr: "error: Type 'string' is not assignable\n  --> /tmp/x/main.ms:1:18\n", executionTimeMs: 3 };
 	await source.press("ControlOrMeta+Enter");
 	await page.getByText("did not build").waitFor();
