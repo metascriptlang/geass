@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node tools/paint.mjs && vite --host 127.0.0.1",
     "check": "node tools/paint.mjs && msc check src/main.ms --target=js",
-    "build": "node tools/paint.mjs && vite build && msc build src/server.ms --target=js",
+    "build": "node tools/paint.mjs && vite build && msc build src/server.ms --target=js -d:server",
     "preview": "vite preview --host 127.0.0.1",
     "test": "npm run build && node tests/browser.mjs && node tests/docs.mjs && node tests/playground.mjs && node tests/codeBlock.mjs && node tests/edge.mjs && node tests/hydrate.mjs && node tests/examples.mjs"
   },
