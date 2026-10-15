@@ -23,6 +23,7 @@ export const tone = createStyles({
 	core: { color: "#ffa828" },
 	build: { color: "#6cb6ff" },
 	chain: { color: "#b78cff" },
+	reference: { color: "#5fd4a0" },
 });
 
 const p = createStyles({
@@ -98,6 +99,36 @@ const p = createStyles({
 		backgroundImage: COPY_ICON,
 		variants: { state: { copied: { backgroundImage: COPIED_ICON } } },
 	},
+	note: {
+		marginBottom: 24,
+		paddingTop: 12,
+		paddingBottom: 12,
+		paddingLeft: 18,
+		paddingRight: 16,
+		backgroundColor: "#121417",
+		fontSize: 16,
+		lineHeight: 24,
+		color: "#b4b1af",
+	},
+	noteEdge: {
+		position: "absolute",
+		top: 0,
+		bottom: 0,
+		left: 0,
+		width: 2,
+		backgroundColor: "#6cb6ff",
+		variants: { kind: { warning: { backgroundColor: "#ffa828" } } },
+	},
+	noteLabel: {
+		marginBottom: 4,
+		fontFamily: theme.mono,
+		fontSize: 12,
+		fontWeight: "600",
+		letterSpacing: 1.2,
+		color: "#6cb6ff",
+		variants: { kind: { warning: { color: "#ffa828" } } },
+	},
+	noteText: { margin: 0 },
 	table: { marginBottom: 28 },
 	row: {
 		flexDirection: "row",
@@ -171,6 +202,22 @@ export function Sample(props: { code: string }): NeonNode {
 		>
 			<View style={p.copyIcon({ state: copied() ? "copied" : "" })} />
 		</Pressable>
+	</View>;
+}
+
+export function Note(props: { children: NeonNode }): NeonNode {
+	return <View style={p.note}>
+		<View style={p.noteEdge({ kind: "" })} />
+		<span style={p.noteLabel({ kind: "" })}>NOTE</span>
+		<p style={p.noteText}>{props.children}</p>
+	</View>;
+}
+
+export function Warning(props: { children: NeonNode }): NeonNode {
+	return <View style={p.note}>
+		<View style={p.noteEdge({ kind: "warning" })} />
+		<span style={p.noteLabel({ kind: "warning" })}>WARNING</span>
+		<p style={p.noteText}>{props.children}</p>
 	</View>;
 }
 
