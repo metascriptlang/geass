@@ -65,6 +65,20 @@ const colorOf = token => {
 	const at = colors.indexOf(color);
 	return at >= 0 ? at : colors.push(color) - 1;
 };
+const fingerprint = code => {
+	let hash = 0x811c9dc5;
+	for (const byte of Buffer.from(code, "utf8")) { hash = Math.imul(hash ^ byte, 16777619) >>> 0; }
+	return hash;
+};
+const owners = new Map();
+for (const code of samples) {
+	const owner = owners.get(fingerprint(code));
+	if (owner !== undefined) {
+		throw new Error(`two samples share fingerprint ${fingerprint(code)}: ${JSON.stringify(owner.slice(0, 40))} ` +
+			`and ${JSON.stringify(code.slice(0, 40))}`);
+	}
+	owners.set(fingerprint(code), code);
+}
 const entries = [...samples].map(code => {
 	const texts = code.split("\n");
 	const lines = shiki.codeToTokens(code, { lang: "metascript", theme: theme.name }).tokens;
@@ -72,10 +86,10 @@ const entries = [...samples].map(code => {
 		throw new Error(`shiki's lines do not rebuild the sample starting ${JSON.stringify(code.slice(0, 40))}`);
 	}
 	const runs = lines.map(line => ({ runs: line.flatMap(token => [colorOf(token), token.content.length]) }));
-	return `\tpaints.set(${JSON.stringify(code)}, ${JSON.stringify(JSON.stringify({ lines: runs }))});`;
+	return `\tpaints.set(${fingerprint(code)}, ${JSON.stringify(JSON.stringify({ lines: runs }))});`;
 });
 fs.writeFileSync(target, "export function codeColors(): string[] {\n" +
 	`\treturn ${JSON.stringify(colors)};\n}\n\n` +
-	"export function codePaints(): Map<string, string> {\n" +
-	"\tconst paints = new Map<string, string>();\n" + entries.join("\n") + "\n\treturn paints;\n}\n");
+	"export function codePaints(): Map<int64, string> {\n" +
+	"\tconst paints = new Map<int64, string>();\n" + entries.join("\n") + "\n\treturn paints;\n}\n");
 console.log(`painted ${entries.length} code samples into ${path.relative(landing, target)}`);

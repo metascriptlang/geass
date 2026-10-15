@@ -17,9 +17,15 @@ const run = files => {
 const good = run({ "page.ms": "const DEPOSIT = \"export function deposit(amount: uint64): void {\" +\n" +
 	"\t\"\\n  vault.lamports += amount;\\n}\";\n<Sample code={DEPOSIT} />\n<Sample code={props.code} />\n" });
 assert.equal(good.status, 0, good.stderr);
-assert.ok(good.painted.includes(
-	"paints.set(\"export function deposit(amount: uint64): void {\\n  vault.lamports += amount;\\n}\""),
-	"the joined const was not painted under its full text");
+const fingerprint = text => {
+	let hash = 0x811c9dc5;
+	for (const byte of Buffer.from(text, "utf8")) { hash = Math.imul(hash ^ byte, 16777619) >>> 0; }
+	return hash;
+};
+assert.equal(fingerprint("hello"), 1335831723, "the test's FNV-1a is not std/hash fingerprint");
+assert.ok(good.painted.includes(`paints.set(${fingerprint(
+	"export function deposit(amount: uint64): void {\n  vault.lamports += amount;\n}")}, `),
+	"the joined const was not painted under the fingerprint of its full text");
 assert.ok(JSON.parse(good.painted.match(/return (\[.*\]);/)[1]).length > 3, "the sample got fewer than four colours");
 
 const computed = run({ "page.ms": "const A = \"x\";\n<Sample code={A} />\n<Sample code={make()} />\n" });
@@ -33,4 +39,8 @@ assert.match(missing.stderr, /page\.ms:1: ELSEWHERE is not a const string in thi
 const joined = run({ "page.ms": "const B = \"a\" + OTHER;\n<Sample code={B} />\n" });
 assert.notEqual(joined.status, 0, "a const joined with a name was painted");
 assert.match(joined.stderr, /page\.ms:2: B is not built from string literals alone/);
-console.log("PASS: the build paints every const code sample by its full text and stops on a code= it cannot resolve");
+
+const twins = run({ "page.ms": "const A = \"costarring\";\nconst B = \"liquid\";\n<Sample code={A} />\n<Sample code={B} />\n" });
+assert.notEqual(twins.status, 0, "two samples with one fingerprint were painted");
+assert.match(twins.stderr, /two samples share fingerprint 1582148253: "costarring" and "liquid"/);
+console.log("PASS: the build paints every const code sample under its fingerprint and stops on a code= it cannot resolve or a shared fingerprint");

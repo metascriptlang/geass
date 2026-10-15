@@ -2,6 +2,7 @@ import { For } from "../../../../neon/src/macros/ui/flow";
 import { createStyles, styleOf } from "../../../../neon/src/macros/ui/style";
 import { Text, View } from "../../../../neon/src/components/primitives";
 import { NeonNode } from "../../../../neon/src/render/node";
+import { fingerprint } from "std/hash";
 import { theme } from "../theme";
 import { codeColors, codePaints } from "./codePaint";
 
@@ -44,13 +45,16 @@ const c = createStyles({
 });
 
 function painted(code: string): CodeLine[] {
-	const paint = PAINTS.get(code);
+	const paint = PAINTS.get(fingerprint(code));
 	if (paint == null) {
 		throw new Error(`code block: no build-time paint for "${code.slice(0, 40)}", run tools/paint.mjs`);
 	}
 	const parsed: Result<CodePaint, string> = JSON.parse<CodePaint>(paint);
 	if (!parsed.ok) { throw new Error(`code block: ${parsed.error}`); }
 	const texts = code.split("\n");
+	if (parsed.value.lines.length != texts.length) {
+		throw new Error(`code block: the paint for "${code.slice(0, 40)}" has another line count`);
+	}
 	let lines: CodeLine[] = [];
 	for (let i = 0; i < texts.length; i++) {
 		const runs = parsed.value.lines[i].runs;
@@ -60,6 +64,9 @@ function painted(code: string): CodeLine[] {
 			const end = at + runs[r + 1];
 			tokens.push({ content: texts[i].slice(at, end), color: COLORS[runs[r]] });
 			at = end;
+		}
+		if (at != texts[i].length) {
+			throw new Error(`code block: the paint for "${code.slice(0, 40)}" does not cover line ${i + 1}`);
 		}
 		lines.push({ tokens: texts[i] === "" ? [{ content: "\n", color: "" }] : tokens });
 	}
