@@ -17,6 +17,8 @@ try {
 	assert.equal((await fetch(`${base}/assets/nope.js`)).status, 404, "a missing asset was answered with a page");
 	assert.equal((await fetch(`${base}/playground`)).status, 200);
 	assert.match(await (await fetch(`${base}/docs/pdas`)).text(), /<title[^>]*>PDAs · Geass docs</, "the served head lacks the page's title");
+	const painted = (await (await fetch(`${base}/docs/pdas`)).text()).match(/<span style="color:#[0-9A-F]+;">/g) ?? [];
+	assert.ok(new Set(painted).size > 3, "the served docs page carries its code without colours");
 
 	browser = await chromium.launch({
 		executablePath: process.env.CHROME_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -53,6 +55,7 @@ try {
 		const docs = await open("/docs/program", width, userAgent);
 		assert.equal(await docs.title(), "Program structure · Geass docs");
 		await docs.waitForFunction(() => new Set([...document.querySelectorAll("span")].map(span => span.style.color)).size > 3);
+		assert.equal(await docs.locator("span", { hasText: /^export$/ }).first().evaluate(span => span.served), true, "hydrate rebuilt the served code");
 		await docs.getByLabel("Copy", { exact: true }).first().click();
 		await docs.getByLabel("Copied", { exact: true }).waitFor();
 		await docs.context().close();

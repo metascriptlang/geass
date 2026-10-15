@@ -1,10 +1,9 @@
-import { createSignal } from "../../../../neon/src/core/signal";
 import { For } from "../../../../neon/src/macros/ui/flow";
 import { createStyles, styleOf } from "../../../../neon/src/macros/ui/style";
 import { Text, View } from "../../../../neon/src/components/primitives";
 import { NeonNode } from "../../../../neon/src/render/node";
-import { isServer } from "../../../../neon/src/render/environment";
 import { theme } from "../theme";
+import { codeColors, codePaints } from "./codePaint";
 
 struct CodeToken {
 	content: string;
@@ -15,12 +14,16 @@ struct CodeLine {
 	tokens: CodeToken[];
 }
 
-struct CodePaint {
-	lines: CodeLine[];
+struct CodeRuns {
+	runs: int32[];
 }
 
-extern function highlightMetaScript(code: string, done: (lines: string) => void): void
-	from "((code, done) => { (globalThis.geassHighlighter ??= Promise.all([import('shiki/core'), import('shiki/engine/javascript'), import('code-block-theme'), import('metascript-grammar')]).then(([core, engine, colors, grammar]) => core.createHighlighterCore({ themes: [colors.default], langs: [{ ...grammar.default, name: 'metascript' }], engine: engine.createJavaScriptRegexEngine() }))).then((shiki) => done(JSON.stringify({ lines: shiki.codeToTokens(code, { lang: 'metascript', theme: 'nerdtools-night' }).tokens.map((line) => ({ tokens: line.some((token) => token.content) ? line.map((token) => ({ content: token.content.replace(/\\t/g, '    '), color: token.color ?? '' })) : [{ content: '\\n', color: '' }] })) }))); })(#, #)";
+struct CodePaint {
+	lines: CodeRuns[];
+}
+
+const COLORS = codeColors();
+const PAINTS = codePaints();
 
 const c = createStyles({
 	block: {
@@ -40,26 +43,32 @@ const c = createStyles({
 	line: { width: "max-content", minHeight: 22 },
 });
 
-function unpainted(code: string): CodeLine[] {
+function painted(code: string): CodeLine[] {
+	const paint = PAINTS.get(code);
+	if (paint == null) {
+		throw new Error(`code block: no build-time paint for "${code.slice(0, 40)}", run tools/paint.mjs`);
+	}
+	const parsed: Result<CodePaint, string> = JSON.parse<CodePaint>(paint);
+	if (!parsed.ok) { throw new Error(`code block: ${parsed.error}`); }
+	const texts = code.split("\n");
 	let lines: CodeLine[] = [];
-	for (const text of code.split("\n")) {
-		const content = text === "" ? "\n" : text.replaceAll("\t", "    ");
-		lines.push({ tokens: [{ content: content, color: "" }] });
+	for (let i = 0; i < texts.length; i++) {
+		const runs = parsed.value.lines[i].runs;
+		let tokens: CodeToken[] = [];
+		let at = 0;
+		for (let r = 0; r < runs.length; r += 2) {
+			const end = at + runs[r + 1];
+			tokens.push({ content: texts[i].slice(at, end), color: COLORS[runs[r]] });
+			at = end;
+		}
+		lines.push({ tokens: texts[i] === "" ? [{ content: "\n", color: "" }] : tokens });
 	}
 	return lines;
 }
 
 export function CodeBlock(props: { code: string }): NeonNode {
-	const [lines, setLines] = createSignal<CodeLine[]>(unpainted(props.code));
-	if (!isServer()) {
-		highlightMetaScript(props.code, (painted: string): void => {
-			const parsed: Result<CodePaint, string> = JSON.parse<CodePaint>(painted);
-			if (!parsed.ok) { console.error(`code block: ${parsed.error}`); return; }
-			setLines(parsed.value.lines);
-		});
-	}
 	return <View style={c.block}>
-		<For each={lines()}>
+		<For each={painted(props.code)}>
 			{(line: CodeLine): NeonNode => <Text style={c.line}>
 				<For each={line.tokens}>
 					{(token: CodeToken): NeonNode =>
