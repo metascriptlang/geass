@@ -25,7 +25,16 @@ try {
 		return about[0];
 	};
 	const abouts = new Set([await described("Getting started")]);
+	const next = page.getByRole("link", { name: /NEXT →\s*Your first program/ });
+	assert.equal(await next.getAttribute("href"), "/docs/first-program", "Getting started does not turn to the first program");
+	assert.equal(await page.getByText("← PREVIOUS").count(), 0, "the first page offers a previous page");
+	for (const label of ["START", "WRITE A PROGRAM", "SHIP IT", "MAGICBLOCK", "REFERENCE"]) {
+		assert.equal(await page.getByText(label, { exact: true }).count(), 1, `the sidebar has no ${label} group`);
+	}
 	for (const [link, path, title] of [
+		["YOUR FIRST PROGRAM", "first-program", "Your first program"],
+		["ERROR CODES", "error-codes", "Error codes"],
+		["WHEN YOU ARE STUCK", "troubleshooting", "When you are stuck"],
 		["SOLANA IN FIVE MINUTES", "solana-basics", "Solana in five minutes"],
 		["COMING FROM ANCHOR", "from-anchor", "Coming from Anchor"],
 		["PROGRAM STRUCTURE", "program", "Program structure"],
@@ -50,7 +59,7 @@ try {
 		assert.equal(await page.locator("h1").innerText(), title);
 		abouts.add(await described(title));
 	}
-	assert.equal(abouts.size, 19, "every docs page has its own description");
+	assert.equal(abouts.size, 22, "every docs page has its own description");
 	assert.match(await page.locator("body").innerText(), /WritableSigner\s+#\[account\(mut\)\] Signer/);
 	const tone = "rgb(255, 168, 40)";
 	const leaf = page.getByRole("link", { name: "Accounts your program owns" });

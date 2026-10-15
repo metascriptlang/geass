@@ -4,61 +4,24 @@ import {
 } from "../ui/prose";
 
 const INSTALL_CODE = "$ curl -fsSL https://metascriptlang.org/install.sh | sh";
-const VERSION_CODE = "$ msc --version";
-const TOOLCHAIN_CODE = "$ sh -c \"$(curl -sSfL https://release.anza.xyz/stable/install)\"
-$ cargo-build-sbf --install-only --tools-version v1.57";
-const ID_CODE = "const config = {
-  defines: { programId: \"B7ihZyoXZ1fwAY3TugkiFJ6SXkzJwMuQrxrekBaSmn32\" },
-};
-export default config;";
-const STATE_CODE = "import {
-  Discriminator, Program, ProgramError, System, Writable, WritableSigner,
-  accountDiscriminator, accounts, createPda, failWith, instruction,
-} from \"std/solana\";
-
-export struct Counter {
-  value: uint64;
-  bump: uint8;
-  pad: uint8[7];
+const GLANCE_CODE = "export struct IncrementAccounts {
+  authority: Signer;
+  @seeds(\"counter\") @bump(counter.bump) counter: Mutable<Counter>;
 }
 
-export function discriminator(this typeof Counter): Discriminator {
-  return @comptime { return accountDiscriminator(\"Counter\"); };
-}";
-const HANDLER_CODE = "export struct InitAccounts {
-  payer: WritableSigner;
-  counter: Writable;
-  systemProgram: Program<System>;
-}
-
-function init(): Result<uint64, ProgramError> {
-  const x = try accounts<InitAccounts>();
-  const made = try createPda<Counter>(x.payer, x.counter, [\"counter\"]);
-  const counter = made.asMutable().data();
-  counter.value = 42;
-  counter.bump = made.foundBump();
+function increment(): Result<uint64, ProgramError> {
+  const x = try accounts<IncrementAccounts>();
+  const counter = x.counter.data();
+  if (counter.authority != x.authority.key()) {
+    return Result.err(CounterError.NotYourCounter);
+  }
+  counter.count += 1;
   return Result.ok(0);
 }";
-const ENTRY_CODE = "export enum HelloOp {
-  Init,
-}
-
-export function dispatch(): Result<uint64, ProgramError> {
-  return match (try instruction<HelloOp>()) {
-    HelloOp.Init => init(),
-  };
-}
-
-export function entry(): void {
-  const result = dispatch();
-  if (!result.ok) { failWith(result.error); }
-}
-
-when (!testBuild) {
-  entry();
-}";
-const BUILD_CODE = "$ msc check program.ms
-$ msc build program.ms --os=solana --release --output=out/counter.so";
+const TOOLCHAIN_CODE = "$ sh -c \"$(curl -sSfL https://release.anza.xyz/stable/install)\"
+$ cargo-build-sbf --install-only --tools-version v1.57";
+const CHECK_CODE = "$ msc --version
+$ solana --version";
 
 export function GettingStarted(): NeonNode {
 	return <>
@@ -66,6 +29,18 @@ export function GettingStarted(): NeonNode {
 		<Lede t={"Geass is the Solana toolkit of MetaScript. You write TypeScript syntax; the " +
 			"compiler writes C and builds it into an sBPF program, with no Rust and no " +
 			"framework underneath."} />
+		<Heading at="glance" title="At a glance" />
+		<P>
+			One instruction of a counter program. The struct lists the accounts the
+			instruction takes, and each field's type is a check that passes before the
+			function runs: here, that the caller signed and that the counter is this
+			program's, at its address. The rest is the TypeScript you know:
+		</P>
+		<Sample code={GLANCE_CODE} />
+		<P>
+			The output is an ordinary Solana program that Anchor's tools, Codama and explorers
+			read like one written in Rust.
+		</P>
 		<Heading at="installation" title="Installation" />
 		<P>
 			Geass is not a separate package. It is the <M t="std/solana" /> module that ships
@@ -73,10 +48,9 @@ export function GettingStarted(): NeonNode {
 		</P>
 		<Sample code={INSTALL_CODE} />
 		<P>
-			The installer puts <M t="msc" /> on your <M t="PATH" />. Open a new terminal and
-			check it:
+			The installer puts <M t="msc" /> on your <M t="PATH" />; open a new terminal
+			before you use it.
 		</P>
-		<Sample code={VERSION_CODE} />
 		<P>
 			The first build for your own machine, such as <M t="msc test" />, asks before it
 			downloads Zig 0.16.0 as its C compiler: about 55 MB to download (97 MB on
@@ -94,83 +68,19 @@ export function GettingStarted(): NeonNode {
 			The tools land in <M t="~/.cache/solana" />, where <M t="msc" /> finds them.{" "}
 			<M t="MSC_SBF_CLANG" /> names another clang when you keep several versions.
 		</P>
+		<Heading at="check" title="Check that it works" />
+		<P>In a new terminal, both commands print a version:</P>
+		<Sample code={CHECK_CODE} />
 		<Heading at="first-program" title="Your first program" />
 		<P>
-			A counter in one file, <M t="program.ms" />, with its id beside it in{" "}
-			<M t="build.ms" />. It has the four parts every Geass program has.
+			<L to="/docs/first-program" t="Your first program" /> builds a counter from an
+			empty folder to a deployed program you call from TypeScript, with a test on the
+			way. Pick where to start:
 		</P>
-		<Subheading at="program-id" title="The program id" />
-		<P>
-			The id lives in the project's <M t="build.ms" />, where Anchor keeps it in{" "}
-			<M t="Anchor.toml" /> beside <M t="declare_id!" />. Every module reads the same one:
-		</P>
-		<Sample code={ID_CODE} />
-		<Subheading at="account" title="An account" />
-		<P>
-			State is a fixed-size struct. Its discriminator is the 8 bytes Anchor would
-			compute, found at compile time from the type's own name:
-		</P>
-		<Sample code={STATE_CODE} />
-		<Subheading at="instruction" title="An instruction" />
-		<P>
-			A struct lists the accounts the instruction takes; each field's type is the check
-			it must pass. The handler asks for them with <M t="accounts<T>()" /> and gets them
-			already verified:
-		</P>
-		<Sample code={HANDLER_CODE} />
-		<Subheading at="entry" title="Dispatch and entry" />
-		<P>
-			An enum names the instructions, <M t="instruction<Op>()" /> picks one by its
-			8-byte discriminator, and <M t="entry" /> reports a failure to the runtime:
-		</P>
-		<Sample code={ENTRY_CODE} />
-		<P>
-			The last block is the program's entrypoint: the chain runs the top level of the
-			file. Leave the call out and the program still builds, does nothing and reports
-			success.
-		</P>
-		<Subheading at="syntax" title="Syntax TypeScript does not have" />
-		<Table>
-			<Head a="YOU READ" b="IT MEANS" />
-			<Row a="struct" b="A value with a fixed layout in memory, field after field" />
-			<Row a="uint64, uint8[7]" b="Sized integers and arrays of a fixed length" />
-			<Row
-				a="pad: uint8[7]"
-				b="Fills the struct to 16 bytes, so the layout has no hidden gap"
-			/>
-			<Row
-				a="try call()"
-				b="On a failed Result, returns the error from this function. Otherwise gives the value"
-			/>
-			<Row a="match (x) { A => ..., }" b="A switch that must cover every case" />
-			<Row a="when (flag) { }" b="Decided by the compiler. The other branch is not built" />
-			<Row a="@comptime { }" b="Runs in the compiler; the result is a constant" />
-			<Row
-				a="function f(this typeof Counter)"
-				b="A function called as Counter.f(), declared outside the type"
-			/>
-			<Row a="Result.ok(0)" b="Success. The number is not sent anywhere" />
-		</Table>
-		<P>
-			The rest of the language is in the{" "}
-			<L to="https://metascriptlang.org/learn" t="MetaScript documentation" />.
-		</P>
-		<Heading at="build-and-test" title="Build and test" />
-		<P>
-			<M t="msc check" /> type-checks the program and runs every compile-time check
-			of its accounts. <M t="--os=solana" /> writes the program the chain runs:
-		</P>
-		<Sample code={BUILD_CODE} />
-		<P>
-			This counter builds to a 3,464-byte <M t="counter.so" /> with platform tools
-			v1.57. It has no test yet: <L to="/docs/testing" t="Testing" /> writes its first
-			one and runs it on your machine, and <L to="/docs/deploying" t="Deploying" />{" "}
-			puts it on a cluster.
-		</P>
-		<Heading at="next" title="Where to go next" />
 		<Table>
 			<Head a="YOU" b="READ" />
-			<Row a="Have not written a Solana program" b="Solana in five minutes, the next page" />
+			<Row a="Want to build something now" b="Your first program, the next page" />
+			<Row a="Have not written a Solana program" b="Solana in five minutes" />
 			<Row a="Write Anchor programs" b="Coming from Anchor" />
 			<Row a="Want to try without installing" b="The Playground, in the header" />
 		</Table>
@@ -359,8 +269,8 @@ export function FromAnchor(): NeonNode {
 			<Row a="Pubkey / Address" b="Pubkey" />
 			<Row a="u64, u8, bool" b="uint64, uint8, boolean" />
 			<Row a="Result<()>" b="Result<uint64, ProgramError>" />
-			<Row a="anchor build" b="msc build program.ms --os=solana --release" />
-			<Row a="anchor test" b="msc test program.ms" />
+			<Row a="anchor build" b="msc build src/index.ms --os=solana --release" />
+			<Row a="anchor test" b="msc test src/index.ms" />
 		</Table>
 		<Heading at="what-differs" title="What differs" />
 		<Subheading at="explicit-lifecycle" title="Create and close are calls" />
