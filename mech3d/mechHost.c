@@ -1,7 +1,6 @@
 // Stands in for std/fs readFile, which does not link on emcc:
 // ~/metascript/.inbox/compiler/2026-10-10-std-fs-does-not-link-on-emcc.md
 #include <stdio.h>
-#include <emscripten.h>
 #include "mechHost.h"
 
 int64_t mechFileSize(const char *name) {
@@ -20,6 +19,9 @@ int32_t mechFileRead(const char *name, uint8_t *out, int64_t count) {
 	fclose(file);
 	return got == (size_t)count;
 }
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
 
 EM_JS(double, mechPageProgress, (void), {
 	const range = document.documentElement.scrollHeight - innerHeight;
@@ -88,3 +90,52 @@ EM_JS(double, mechTuned, (const char *name, double low, double high, double pres
 	}
 	return knobs.values[label];
 });
+
+#else
+#include <time.h>
+
+// Native window: no page to scroll, so the scroll share follows a fixed script, read from
+// the share points mechView.ms names: camera settled by 0.2, six core beats open by 0.745,
+// closing to the front view from 0.82, outline from 0.84.
+static double readyAt = -1.0;
+
+double mechNow(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec * 1000.0 + now.tv_nsec / 1e6;
+}
+
+void mechReady(void) {
+	readyAt = mechNow();
+}
+
+static const double SCRIPT_MS[] = { 0, 2600, 5400, 11400, 14400, 17400, 20400, 23400 };
+static const double SCRIPT_SHARE[] = { 0, 0, 0.2, 0.78, 0.78, 1.0, 1.0, 0.78 };
+enum { SCRIPT_STEPS = sizeof SCRIPT_MS / sizeof SCRIPT_MS[0] };
+
+double mechPageProgress(void) {
+	if (readyAt < 0) return 0;
+	double at = mechNow() - readyAt;
+	for (int step = 1; step < SCRIPT_STEPS; step++) {
+		if (at < SCRIPT_MS[step]) {
+			double along = (at - SCRIPT_MS[step - 1]) / (SCRIPT_MS[step] - SCRIPT_MS[step - 1]);
+			return SCRIPT_SHARE[step - 1] + (SCRIPT_SHARE[step] - SCRIPT_SHARE[step - 1]) * along;
+		}
+	}
+	return SCRIPT_SHARE[SCRIPT_STEPS - 1];
+}
+
+void mechFetchStage(int32_t stage) {
+	(void)stage;
+}
+
+int32_t mechStageArrived(int32_t stage) {
+	(void)stage;
+	return 1;
+}
+
+double mechTuned(const char *name, double low, double high, double preset) {
+	(void)name; (void)low; (void)high;
+	return preset;
+}
+#endif
