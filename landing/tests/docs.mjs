@@ -108,6 +108,12 @@ try {
 	assert.match(shown, /ACCOUNT · Counter\s+56 BYTES[\s\S]*count\s+u64 · 40–47/);
 	assert.match(shown, /CALL · increment[\s\S]*counter\s+WRITABLE\s+PDA "counter"/);
 	assert.match(shown, /ERRORS\s+6000\s+NotYourCounter/);
+	const tinted = lit => page.waitForFunction(on => [...document.querySelectorAll('[aria-label^="The 56 bytes"] path')].some(face => face.getAttribute("fill") !== "rgb(22,23,26)") === on, lit, { timeout: 2000 });
+	await tinted(false).catch(() => assert.fail("a field is lit before the reader picks one"));
+	await page.getByRole("button", { name: "count" }).click();
+	await tinted(true).catch(() => assert.fail("picking count does not light its layer"));
+	await page.getByRole("button", { name: "count" }).click();
+	await tinted(false).catch(() => assert.fail("picking count again does not put its layer out"));
 	for (const [width, beside] of [[1400, true], [1399, false], [390, false]]) {
 		await page.setViewportSize({ width, height: 900 });
 		await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth, null, { timeout: 2000 })

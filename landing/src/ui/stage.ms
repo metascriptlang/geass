@@ -1,5 +1,5 @@
 import { createMemo } from "../../../../neon/src/core/memo";
-import { Accessor } from "../../../../neon/src/core/signal";
+import { Accessor, createSignal } from "../../../../neon/src/core/signal";
 import { For, Show } from "../../../../neon/src/macros/ui/flow";
 import { createStyles, styleOf } from "../../../../neon/src/macros/ui/style";
 import { Pressable, Text, View } from "../../../../neon/src/components/primitives";
@@ -8,7 +8,6 @@ import { useWindowDimensions } from "../../../../neon/src/render/environment";
 import { NeonNode } from "../../../../neon/src/render/node";
 import { fingerprint } from "std/hash";
 import { Layers, layersHeight } from "../../../isoline/src/layers";
-import { createTour } from "../../../isoline/src/tour";
 import { theme } from "../theme";
 import { Sample } from "./prose";
 import { stageShapes } from "./stageShapes";
@@ -66,7 +65,6 @@ const FIELD_TONES = ["#d5d3d1", "#ffa828", "#6cb6ff", "#b78cff", "#5fd4a0", "#f0
 const TONE = "#f0363a";
 const PLATE = "#16171a";
 const COLUMNS = 8;
-const TOUR_MS = 1800;
 const CODE_TOP = 13;
 const CODE_LINE = 22;
 const CARD = 340;
@@ -129,7 +127,7 @@ const s = createStyles({
 	figure: { flexDirection: "row", gap: 16 },
 	legend: { flex: 1, minWidth: 0 },
 	field: { height: LEGEND, justifyContent: "center", cursor: "pointer" },
-	fieldName: { color: "#6b6966" },
+	fieldName: { color: "#b4b1af" },
 	fieldType: { fontSize: 11, color: "#4c4f53" },
 	row: { flexDirection: "row", alignItems: "center", gap: 10, height: ROW },
 	input: { width: 104, flexShrink: 0, color: "#d5d3d1" },
@@ -332,7 +330,10 @@ export function Staged(props: { code: string; idl: string }): NeonNode {
 	}
 	const cards = cardsOf(shape);
 	const fields = shape.accounts[0].fields;
-	const [lit, pick] = createTour(fields.length, TOUR_MS);
+	const [lit, setLit] = createSignal<number>(-1);
+	const pick = (at: number): void => { setLit(lit() === at ? -1 : at); };
+	const litLine = (): number => lit() < 0 ? 0 : fields[lit()].line;
+	const litTone = (): string => lit() < 0 ? TONE : toneOf(lit());
 	return <View style={s.staged}>
 		<Sample code={props.code} />
 		<Show when={roomy()}>
@@ -342,9 +343,11 @@ export function Staged(props: { code: string; idl: string }): NeonNode {
 						<View style={s.bandEdge} />
 					</View>}
 			</For>
-			<View style={[s.band, s.bandLit, styleOf({ top: lineTop(fields[lit()].line) })]}>
-				<View style={[s.bandEdge, styleOf({ backgroundColor: toneOf(lit()) })]} />
-			</View>
+			<Show when={lit() >= 0}>
+				<View style={[s.band, s.bandLit, styleOf({ top: lineTop(litLine()) })]}>
+					<View style={[s.bandEdge, styleOf({ backgroundColor: litTone() })]} />
+				</View>
+			</Show>
 		</Show>
 		<View style={roomy() ? s.column : s.columnInline}>
 			<For each={cards}>
