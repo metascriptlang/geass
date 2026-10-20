@@ -1,10 +1,14 @@
 import { createMemo } from "../../../../neon/src/core/memo";
+import { Accessor } from "../../../../neon/src/core/signal";
 import { For, Show } from "../../../../neon/src/macros/ui/flow";
 import { createStyles, styleOf } from "../../../../neon/src/macros/ui/style";
-import { Text, View } from "../../../../neon/src/components/primitives";
+import { Pressable, Text, View } from "../../../../neon/src/components/primitives";
+import { Circle, Path, Svg } from "../../../../neon/src/components/svg/elements";
 import { useWindowDimensions } from "../../../../neon/src/render/environment";
 import { NeonNode } from "../../../../neon/src/render/node";
 import { fingerprint } from "std/hash";
+import { Layers, layersHeight } from "../../../isoline/src/layers";
+import { createTour } from "../../../isoline/src/tour";
 import { theme } from "../theme";
 import { Sample } from "./prose";
 import { stageShapes } from "./stageShapes";
@@ -14,6 +18,7 @@ struct ShapeField {
 	type: string;
 	offset: int32;
 	size: int32;
+	line: int32;
 }
 
 struct ShapeAccount {
@@ -48,11 +53,6 @@ struct ProgramShape {
 	errors: ShapeError[];
 }
 
-struct StageByte {
-	color: string;
-	label: string;
-}
-
 struct StageCard {
 	line: int32;
 	top: number;
@@ -62,20 +62,25 @@ struct StageCard {
 }
 
 const SHAPES = stageShapes();
-const FIELD_TONES = ["#6b6966", "#ffa828", "#6cb6ff", "#b78cff", "#5fd4a0", "#f0363a"];
+const FIELD_TONES = ["#d5d3d1", "#ffa828", "#6cb6ff", "#b78cff", "#5fd4a0", "#f0363a"];
 const TONE = "#f0363a";
+const PLATE = "#16171a";
+const COLUMNS = 8;
+const TOUR_MS = 1800;
 const CODE_TOP = 13;
 const CODE_LINE = 22;
+const CARD = 340;
+const WIRE = 64;
 const PAD = 16;
 const HEAD = 18;
 const HEAD_GAP = 12;
-const SQUARE = 24;
-const SQUARE_GAP = 3;
-const LEGEND = 18;
+const LEGEND = 36;
 const ROW = 26;
 const CARD_GAP = 12;
 const viewport = useWindowDimensions();
-const roomy = createMemo(() => viewport().width >= 1440);
+
+export const STAGE_COLUMN = CARD + WIRE;
+export const roomy = createMemo(() => viewport().width >= 1400);
 
 const s = createStyles({
 	staged: { position: "relative" },
@@ -84,11 +89,12 @@ const s = createStyles({
 		left: 0,
 		right: 0,
 		height: CODE_LINE,
-		backgroundColor: "rgba(240, 54, 58, 0.09)",
+		backgroundColor: "rgba(240, 54, 58, 0.07)",
 		pointerEvents: "none",
 	},
+	bandLit: { backgroundColor: "rgba(240, 54, 58, 0.16)" },
 	bandEdge: { position: "absolute", top: 0, bottom: 0, left: 0, width: 2, backgroundColor: TONE },
-	column: { position: "absolute", top: 0, left: "calc(100% + 40px)", width: 380 },
+	column: { position: "absolute", top: 0, left: -STAGE_COLUMN, width: CARD },
 	columnInline: { marginBottom: 24 },
 	card: {
 		position: "absolute",
@@ -99,15 +105,15 @@ const s = createStyles({
 		paddingLeft: PAD + 4,
 		paddingRight: PAD + 4,
 		borderWidth: 1,
-		borderColor: theme.line,
+		borderColor: "#202125",
 		borderRadius: 6,
-		backgroundColor: "#131417",
+		backgroundColor: PLATE,
 		fontFamily: theme.mono,
 		fontSize: 12,
 		color: "#b4b1af",
 	},
 	cardInline: { position: "relative", marginBottom: CARD_GAP },
-	wire: { position: "absolute", backgroundColor: "rgba(240, 54, 58, 0.5)" },
+	wire: { position: "absolute", left: CARD },
 	head: {
 		flexDirection: "row",
 		justifyContent: "space-between",
@@ -120,30 +126,13 @@ const s = createStyles({
 		color: TONE,
 	},
 	tag: { fontWeight: "400", letterSpacing: 0.5, color: "#6b6966" },
-	grid: {
-		flexDirection: "row",
-		flexWrap: "wrap",
-		gap: SQUARE_GAP,
-		width: 8 * SQUARE + 7 * SQUARE_GAP,
-		marginBottom: HEAD_GAP,
-	},
-	square: {
-		width: SQUARE,
-		height: SQUARE,
-		paddingTop: 2,
-		paddingLeft: 3,
-		borderRadius: 3,
-		fontSize: 9,
-		lineHeight: 10,
-		color: "rgba(12, 13, 15, 0.75)",
-	},
-	legend: { flexDirection: "row", alignItems: "center", gap: 10, height: LEGEND },
-	dot: { width: 8, height: 8, borderRadius: 2 },
-	legendName: { width: 104, color: "#d5d3d1" },
-	legendType: { flex: 1 },
-	legendBytes: { color: "#6b6966" },
+	figure: { flexDirection: "row", gap: 16 },
+	legend: { flex: 1, minWidth: 0 },
+	field: { height: LEGEND, justifyContent: "center", cursor: "pointer" },
+	fieldName: { color: "#6b6966" },
+	fieldType: { fontSize: 11, color: "#4c4f53" },
 	row: { flexDirection: "row", alignItems: "center", gap: 10, height: ROW },
-	input: { width: 112, flexShrink: 0, color: "#d5d3d1" },
+	input: { width: 104, flexShrink: 0, color: "#d5d3d1" },
 	pills: { flexDirection: "row", gap: 6 },
 	pill: {
 		paddingLeft: 6,
@@ -176,28 +165,40 @@ function shapeOf(code: string): ProgramShape {
 	return parsed.value;
 }
 
-function fieldTone(at: number): string {
+function toneOf(at: number): string {
 	return FIELD_TONES[at % FIELD_TONES.length];
 }
 
-function bytesOf(account: ShapeAccount): StageByte[] {
-	const bytes: StageByte[] = [];
+function groupsOf(account: ShapeAccount): int32[] {
+	const groups: int32[] = [];
 	for (let at = 0; at < account.fields.length; at++) {
-		const field = account.fields[at];
-		for (let i = 0; i < field.size; i++) {
-			bytes.push({ color: fieldTone(at), label: i === 0 ? `${field.offset}` : "" });
-		}
+		for (let i = 0; i < account.fields[at].size; i++) { groups.push(at as int32); }
 	}
-	return bytes;
+	return groups;
+}
+
+function tonesOf(account: ShapeAccount): string[] {
+	const tones: string[] = [];
+	for (let at = 0; at < account.fields.length; at++) { tones.push(toneOf(at)); }
+	return tones;
+}
+
+function bytesOf(field: ShapeField): string {
+	const end = field.offset + field.size - 1;
+	return field.size === 1 ? `${field.offset}` : `${field.offset}–${end}`;
+}
+
+function lineTop(line: number): number {
+	return CODE_TOP + line * CODE_LINE;
+}
+
+function accountHeight(account: ShapeAccount): number {
+	return Math.max(layersHeight(account.size, COLUMNS), account.fields.length * LEGEND);
 }
 
 function heightOf(card: StageCard): number {
 	let inner: number = card.errors.length * ROW;
-	for (const account of card.accounts) {
-		const rows = Math.ceil(account.size / 8);
-		inner += rows * SQUARE + (rows - 1) * SQUARE_GAP + HEAD_GAP;
-		inner += account.fields.length * LEGEND;
-	}
+	for (const account of card.accounts) { inner += accountHeight(account); }
 	for (const instruction of card.instructions) { inner += instruction.accounts.length * ROW; }
 	return 2 * PAD + 2 + HEAD + HEAD_GAP + inner;
 }
@@ -222,7 +223,7 @@ function cardsOf(shape: ProgramShape): StageCard[] {
 	cards.sort((a, b) => a.line - b.line);
 	let free: number = 0;
 	for (let at = 0; at < cards.length; at++) {
-		cards[at].top = Math.max(CODE_TOP + cards[at].line * CODE_LINE - PAD, free);
+		cards[at].top = Math.max(lineTop(cards[at].line) - PAD, free);
 		free = cards[at].top + heightOf(cards[at]) + CARD_GAP;
 	}
 	return cards;
@@ -235,40 +236,59 @@ function pillKind(check: string): string {
 }
 
 function Wire(props: { card: StageCard }): NeonNode {
-	const from = CODE_TOP + props.card.line * CODE_LINE + CODE_LINE / 2 - props.card.top;
-	const to = PAD + HEAD / 2;
-	const drop = Math.abs(to - from) + 1;
-	return <>
-		<View style={[s.wire, { top: from, left: -41, width: 20, height: 1 }]} />
-		<View style={[s.wire, { top: Math.min(from, to), left: -21, width: 1, height: drop }]} />
-		<View style={[s.wire, { top: to, left: -21, width: 20, height: 1 }]} />
-	</>;
+	const from = PAD + HEAD / 2;
+	const to = lineTop(props.card.line) + CODE_LINE / 2 - props.card.top;
+	const top = Math.min(from, to) - 4;
+	const height = Math.abs(to - from) + 8;
+	const bend = WIRE / 2;
+	const start = from - top;
+	const end = to - top;
+	const curve = `M 0 ${start} C ${bend} ${start} ${bend} ${end} ${WIRE} ${end}`;
+	return <View style={[s.wire, styleOf({ top, width: WIRE, height })]}>
+		<Svg width={WIRE} height={height} viewBox={`0 0 ${WIRE} ${height}`}>
+			<Path d={curve} fill="none" stroke={TONE} strokeOpacity={0.55} strokeWidth={1} />
+			<Circle cx={WIRE - 2} cy={end} r={2} fill={TONE} />
+		</Svg>
+	</View>;
 }
 
-function Account(props: { account: ShapeAccount }): NeonNode {
+function Account(props: {
+	account: ShapeAccount;
+	lit: Accessor<number>;
+	pick: (at: number) => void;
+}): NeonNode {
+	const tones = tonesOf(props.account);
+	const nameStyle = (at: number) =>
+		props.lit() === at ? styleOf({ color: tones[at] }) : s.fieldName;
 	return <>
 		<View style={s.head}>
 			<span>ACCOUNT · {props.account.name}</span>
 			<span style={s.tag}>{props.account.size} BYTES</span>
 		</View>
-		<View style={s.grid}>
-			<For each={bytesOf(props.account)}>
-				{(cell: StageByte): NeonNode =>
-					<Text style={[s.square, { backgroundColor: cell.color }]}>{cell.label}</Text>}
-			</For>
+		<View style={s.figure}>
+			<Layers
+				groups={groupsOf(props.account)}
+				columns={COLUMNS}
+				tones={tones}
+				lit={props.lit}
+				palette={{ plate: PLATE, line: "#4c4f53" }}
+				label={`The ${props.account.size} bytes of ${props.account.name}, eight to a layer`}
+			/>
+			<View style={s.legend}>
+				<For each={props.account.fields}>
+					{(field: ShapeField, at: () => number): NeonNode => <Pressable
+						style={s.field}
+						accessibilityLabel={field.name}
+						onPress={(): void => { props.pick(at()); }}
+					>
+						<Text style={nameStyle(at())}>
+							{field.name}
+						</Text>
+						<Text style={s.fieldType}>{field.type} · {bytesOf(field)}</Text>
+					</Pressable>}
+				</For>
+			</View>
 		</View>
-		<For each={props.account.fields}>
-			{(field: ShapeField, at: () => number): NeonNode => <View style={s.legend}>
-				<View style={[s.dot, { backgroundColor: fieldTone(at()) }]} />
-				<Text style={s.legendName}>{field.name}</Text>
-				<Text style={s.legendType}>{field.type}</Text>
-				<Text style={s.legendBytes}>
-					{field.size === 1
-						? `byte ${field.offset}`
-						: `bytes ${field.offset}–${field.offset + field.size - 1}`}
-				</Text>
-			</View>}
-		</For>
 	</>;
 }
 
@@ -305,16 +325,26 @@ function Errors(props: { errors: ShapeError[] }): NeonNode {
 }
 
 export function Staged(props: { code: string; idl: string }): NeonNode {
-	const cards = cardsOf(shapeOf(props.code));
+	const shape = shapeOf(props.code);
+	if (shape.accounts.length !== 1) {
+		const count = shape.accounts.length;
+		throw new Error(`stage: a staged program has one account type, not ${count}`);
+	}
+	const cards = cardsOf(shape);
+	const fields = shape.accounts[0].fields;
+	const [lit, pick] = createTour(fields.length, TOUR_MS);
 	return <View style={s.staged}>
 		<Sample code={props.code} />
 		<Show when={roomy()}>
 			<For each={cards}>
 				{(card: StageCard): NeonNode =>
-					<View style={[s.band, { top: CODE_TOP + card.line * CODE_LINE }]}>
+					<View style={[s.band, styleOf({ top: lineTop(card.line) })]}>
 						<View style={s.bandEdge} />
 					</View>}
 			</For>
+			<View style={[s.band, s.bandLit, styleOf({ top: lineTop(fields[lit()].line) })]}>
+				<View style={[s.bandEdge, styleOf({ backgroundColor: toneOf(lit()) })]} />
+			</View>
 		</Show>
 		<View style={roomy() ? s.column : s.columnInline}>
 			<For each={cards}>
@@ -322,7 +352,8 @@ export function Staged(props: { code: string; idl: string }): NeonNode {
 					<View style={[s.card, roomy() ? styleOf({ top: card.top }) : s.cardInline]}>
 						<Show when={roomy()}><Wire card={card} /></Show>
 						<For each={card.accounts}>
-							{(account: ShapeAccount): NeonNode => <Account account={account} />}
+							{(shown: ShapeAccount): NeonNode =>
+								<Account account={shown} lit={lit} pick={pick} />}
 						</For>
 						<For each={card.instructions}>
 							{(instruction: ShapeInstruction): NeonNode =>

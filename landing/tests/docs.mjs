@@ -105,16 +105,16 @@ try {
 	await page.goto(`http://127.0.0.1:${port}/docs/first-program#program`, { waitUntil: "networkidle" });
 	const stage = page.getByText("ACCOUNT · Counter").locator("../..");
 	const shown = await page.locator("body").innerText();
-	assert.match(shown, /ACCOUNT · Counter\s+56 BYTES[\s\S]*count\s+u64\s+bytes 40–47/);
+	assert.match(shown, /ACCOUNT · Counter\s+56 BYTES[\s\S]*count\s+u64 · 40–47/);
 	assert.match(shown, /CALL · increment[\s\S]*counter\s+WRITABLE\s+PDA "counter"/);
 	assert.match(shown, /ERRORS\s+6000\s+NotYourCounter/);
-	for (const [width, beside] of [[1440, true], [1439, false], [390, false]]) {
+	for (const [width, beside] of [[1400, true], [1399, false], [390, false]]) {
 		await page.setViewportSize({ width, height: 900 });
 		await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth, null, { timeout: 2000 })
 			.catch(() => assert.fail(`the stage overflows at ${width}px`));
 		const program = await page.locator('[aria-label="Copy"]').nth(3).locator("..").boundingBox();
 		const card = await stage.boundingBox();
-		assert.equal(card.x > program.x + program.width, beside, `the stage is ${beside ? "not beside" : "beside"} its sample at ${width}px`);
+		assert.equal(card.x + card.width < program.x, beside, `the stage is ${beside ? "not beside" : "beside"} its sample at ${width}px`);
 		if (!beside) { assert.ok(card.y >= program.y + program.height, `the stage is not under its sample at ${width}px`); }
 	}
 	if (process.env.DOCS_SHOT) {

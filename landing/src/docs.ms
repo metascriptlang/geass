@@ -11,6 +11,7 @@ import { Style } from "../../../neon/src/render/style";
 import { theme } from "./theme";
 import { Hairline } from "./ui/decor";
 import { PagePlace } from "./ui/pageHead";
+import { STAGE_COLUMN, roomy } from "./ui/stage";
 import { Accounts, Cpi, Pdas, ProgramStructure, Validation } from "./docs/core";
 import { AccountData, ErrorsEvents } from "./docs/data";
 import { Performance, Security } from "./docs/production";
@@ -94,6 +95,7 @@ const CHAIN_TONE = "#b78cff";
 const REFERENCE_TONE = "#5fd4a0";
 const SIDE = "max(0px, calc((100vw - 1500px) / 2))";
 const EDGE = "calc(" + SIDE + " + 24px)";
+const STAGED = ["/docs/first-program"];
 
 const d = createStyles({
 	page: {
@@ -271,7 +273,20 @@ const d = createStyles({
 		paddingTop: 128,
 		paddingBottom: 120,
 		paddingRight: 24,
-		variants: { layout: { narrow: { marginLeft: 0, paddingTop: 24, paddingLeft: 24 } } },
+		variants: {
+			layout: {
+				narrow: { marginLeft: 0, paddingTop: 24, paddingLeft: 24 },
+				staged: { marginLeft: "calc(" + SIDE + " + " + (300 + STAGE_COLUMN) + "px)" },
+			},
+		},
+	},
+	stageBand: {
+		position: "fixed",
+		top: 72,
+		bottom: 0,
+		left: "calc(" + SIDE + " + 280px)",
+		width: STAGE_COLUMN - 24,
+		backgroundColor: "#111215",
 	},
 	title: {
 		margin: 0,
@@ -471,6 +486,7 @@ export function DocsArticle(): NeonNode {
 
 export function Docs(props: LayoutProps): NeonNode {
 	const location = useLocation();
+	const staged = (): boolean => roomy() && STAGED.includes(location().pathname);
 	return <Here value={(): Place => placeOf(location().pathname, location().hash)}><View style={d.page}>
 		<PagePlace path={location().pathname} />
 		<View style={d.header}>
@@ -679,7 +695,8 @@ export function Docs(props: LayoutProps): NeonNode {
 				</Leaf>
 			</Group>
 		</View>
-		<View style={d.article({ layout: wide() ? "" : "narrow" })}>
+		<Show when={staged()}><View style={d.stageBand} /></Show>
+		<View style={d.article({ layout: staged() ? "staged" : wide() ? "" : "narrow" })}>
 			{props.children}
 		</View>
 	</View></Here>;
