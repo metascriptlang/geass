@@ -524,7 +524,7 @@ function Turn(props: { path: string }): NeonNode {
 
 export function Docs(props: { site: DocsSite }): NeonNode {
 	const path = props.site.path;
-	return <Here.Provider value={(): Place => placeOf(path())}><View style={d.page}>
+	return <Here value={(): Place => placeOf(path())}><View style={d.page}>
 		<PagePlace path={path()} />
 		<View style={d.header}>
 			<a style={d.brand} href="/">GEASS</a>
@@ -735,5 +735,5 @@ export function Docs(props: { site: DocsSite }): NeonNode {
 		<View style={d.article({ layout: wide() ? "" : "narrow" })}>
 			<For each={[path()]}>{(at: string): NeonNode => <>{page(at)}<Turn path={at} /></>}</For>
 		</View>
-	</View></Here.Provider>;
+	</View></Here>;
 }
