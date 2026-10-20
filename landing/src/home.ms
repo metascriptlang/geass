@@ -1,3 +1,4 @@
+import { onCleanup } from "../../../neon/src/core/cleanup";
 import { createMemo } from "../../../neon/src/core/memo";
 import { createSignal } from "../../../neon/src/core/signal";
 import { Show } from "../../../neon/src/macros/ui/flow";
@@ -398,17 +399,21 @@ extern class HTMLCanvasElement {
 }
 
 extern function startVoidCanvas(canvas: HTMLCanvasElement, base: cstring, script: cstring): void
-	from "((canvas, base, script) => { const forced = new URLSearchParams(location.search); const start = (dir) => { canvas.dataset.voidBackend = dir; window.Module = { canvas, locateFile: (file) => base + dir + '/' + file }; const tag = document.createElement('script'); tag.src = base + dir + '/' + script; document.body.appendChild(tag); }; if (forced.has('gl') || !navigator.gpu) { start('gl'); return; } if (forced.has('wgpu')) { start('wgpu'); return; } navigator.gpu.requestAdapter().then((adapter) => start(adapter ? 'wgpu' : 'gl'), () => start('gl')); })(#, #, #)";
+	from "((canvas, base, script) => { const forced = new URLSearchParams(location.search); const load = (dir) => new Promise((ready) => { window.Module = { voidBackend: dir, onVoidReady: ready, locateFile: (file) => base + dir + '/' + file }; const tag = document.createElement('script'); tag.src = base + dir + '/' + script; document.body.appendChild(tag); }); window.voidLoaded ??= (forced.has('gl') || !navigator.gpu ? Promise.resolve('gl') : forced.has('wgpu') ? Promise.resolve('wgpu') : navigator.gpu.requestAdapter().then((adapter) => adapter ? 'wgpu' : 'gl', () => 'gl')).then(load); window.voidLoaded.then(() => { canvas.dataset.voidBackend = Module.voidBackend; if (!canvas.voidLeft) { canvas.voidStop = Module.voidStart(canvas); } }); })(#, #, #)";
 
-extern function whenMechReady(canvas: HTMLCanvasElement, done: () => void): void
-	from "((canvas, done) => canvas.addEventListener('mechready', done, { once: true }))(#, #)";
+extern function stopVoidCanvas(canvas: HTMLCanvasElement): void
+	from "((canvas) => { canvas.voidLeft = true; canvas.voidStop?.(); })(#)";
+
+extern function whenMechReady(done: () => void): void
+	from "((done) => addEventListener('mechready', done, { once: true }))(#)";
 
 const [mechLoading, setMechLoading] = createSignal(true);
 
 function startMech(node: HostNode): void {
 	const canvas = node as unknown as HTMLCanvasElement;
-	whenMechReady(canvas, () => { setMechLoading(false); });
+	whenMechReady(() => { setMechLoading(false); });
 	startVoidCanvas(canvas, "/void/", "mechView.js");
+	onCleanup(() => { stopVoidCanvas(canvas); });
 }
 
 const viewport = useWindowDimensions();
