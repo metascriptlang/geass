@@ -1,4 +1,6 @@
 import { gfxSetup, fbWidth, fbHeight } from "../../void/src/sokol/gpu";
+import { runMech } from "./mechRun";
+import { beginScreenPassWith, commit, endPass } from "../../void/src/gpu/door";
 import { Vec4, vec3, eulerQuat } from "../../void/src/math/math3d";
 import { RenderState } from "../../void/src/gpu/state";
 import {
@@ -64,7 +66,6 @@ extern function mechNow(): float64;
 extern function mechFetchStage(stage: int32): void;
 extern function mechStageArrived(stage: int32): int32;
 extern function mechTuned(name: cstring, low: float64, high: float64, preset: float64): float64;
-extern function voidRun(w: int32, h: int32, init: () => void, frame: () => void): void;
 
 struct UnfoldTrack {
 	name: string;
@@ -341,11 +342,17 @@ function initMech(): void {
 	);
 }
 
+function blank(): void {
+	beginScreenPassWith(0.0, 0.0, 0.0, 0.0);
+	endPass();
+	commit();
+}
+
 function frameMech(): void {
 	if (readyAt == NOT_YET) {
 		const first: int32 = mechStageArrived(FIRST_LOOK);
 		if (first < 0) { stop("the mech did not load"); }
-		if (first == 0) { return; }
+		if (first == 0) { blank(); return; }
 		addModel("body.glb");
 		core = addModel("coreLite.glb");
 		loadUnfold();
@@ -448,7 +455,7 @@ function frameMech(): void {
 		projection: { kind: ProjectionKind.Perspective, fovY: fovY },
 	};
 	let view: Result<CameraView, CameraError> = camera.resolve(fbWidth(), fbHeight());
-	if (!view.ok) { return; }
+	if (!view.ok) { blank(); return; }
 	view.value.writeCameraBlock(cameraBlock);
 	let drawn: Result<int32, ForwardError> =
 		renderFrame(forward, items, cameraBlock, lights, fbWidth(), fbHeight());
@@ -456,7 +463,7 @@ function frameMech(): void {
 }
 
 function main(): int32 {
-	voidRun(960, 960, initMech, frameMech);
+	runMech(initMech, frameMech);
 	return 0;
 }
 

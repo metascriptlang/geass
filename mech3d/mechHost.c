@@ -29,7 +29,7 @@ EM_JS(double, mechPageProgress, (void), {
 });
 
 EM_JS(void, mechReady, (void), {
-	Module.canvas.dispatchEvent(new Event("mechready"));
+	dispatchEvent(new Event("mechready"));
 });
 
 EM_JS(double, mechNow, (void), {

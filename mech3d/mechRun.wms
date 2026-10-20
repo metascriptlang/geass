@@ -1,0 +1,6 @@
+import { embedRegister, setViewSampleCount } from "../../void/src/sokol/gpu";
+
+export function runMech(init: () => void, frame: () => void): void {
+	setViewSampleCount(4);
+	embedRegister(init, frame);
+}
