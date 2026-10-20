@@ -114,6 +114,17 @@ try {
 	await tinted(true).catch(() => assert.fail("picking count does not light its layer"));
 	await page.getByRole("button", { name: "count" }).click();
 	await tinted(false).catch(() => assert.fail("picking count again does not put its layer out"));
+	await page.setViewportSize({ width: 1600, height: 1000 });
+	const devnet = page.getByText("TRY IT ON DEVNET").locator("../..");
+	for (const [y, held] of [[0, "title"], [800, "header"], [1600, "stage"]]) {
+		await page.evaluate(y => scrollTo(0, y), y);
+		await page.waitForTimeout(300);
+		const card = await devnet.boundingBox();
+		const title = await page.locator("h1").boundingBox();
+		const next = await stage.boundingBox();
+		const at = { title: title.y + title.height / 2 - 25, header: 96, stage: next.y - 12 - card.height }[held];
+		assert.ok(Math.abs(card.y - at) < 2, `the devnet card is not held by the ${held} at scroll ${y}`);
+	}
 	for (const [width, beside] of [[1400, true], [1399, false], [390, false]]) {
 		await page.setViewportSize({ width, height: 900 });
 		await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth, null, { timeout: 2000 })
