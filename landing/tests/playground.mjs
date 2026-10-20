@@ -71,7 +71,7 @@ try {
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
-		await here.getByText(tab, { exact: true }).click();
+		await here.getByRole("button", { name: tab, exact: true }).click();
 		await here.getByText("Run", { exact: true }).click();
 		await here.waitForFunction(() => /ran in \d+ ms|did not build/.test(document.body.innerText) && !document.body.innerText.includes("compiling and running"), null, { timeout: 60000 });
 		await here.getByText(printed.at(-1).trim(), { exact: true }).last().waitFor({ timeout: 60000 })
