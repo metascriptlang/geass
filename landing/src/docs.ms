@@ -58,11 +58,8 @@ struct Place {
 	anchor: string;
 }
 
-function indexOfPage(path: string): int32 {
-	for (let at = 0; at < PAGES.length; at++) {
-		if (PAGES[at].path === path) { return at; }
-	}
-	return -1;
+function indexOfPage(path: string): number {
+	return PAGES.findIndex((page) => page.path === path);
 }
 
 function placeOf(path: string, hash: string): Place {
