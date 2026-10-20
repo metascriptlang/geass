@@ -10,6 +10,7 @@ export const codeBlockAlias = {
 	)),
 	"code-block-theme": fileURLToPath(new URL("src/ui/codeBlockTheme.js", import.meta.url)),
 	"playground-editor": fileURLToPath(new URL("src/playground/editor.js", import.meta.url)),
+	"devnet-relay": fileURLToPath(new URL("relay.js", import.meta.url)),
 };
 
 function servePacked(request, response, next) {

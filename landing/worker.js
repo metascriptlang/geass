@@ -1,4 +1,5 @@
 import { page } from "./out/server.js";
+import { relay } from "./relay.js";
 
 const PHONE = 390;
 const DESKTOP = 1440;
@@ -7,6 +8,7 @@ const PACKED = /^\/msc\/msc\.(wasm|data)$/;
 export default {
 	async fetch(request, env) {
 		const url = new URL(request.url);
+		if (url.pathname.startsWith("/api/")) { return relay(request, env); }
 		const packed = PACKED.exec(url.pathname);
 		if (packed !== null) {
 			const asset = await env.ASSETS.fetch(new URL(url.pathname + ".br", url));
