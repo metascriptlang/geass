@@ -118,8 +118,12 @@ try {
 		await page.setViewportSize({ width, height: 900 });
 		await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth, null, { timeout: 2000 })
 			.catch(() => assert.fail(`the stage overflows at ${width}px`));
-		const program = await page.locator('[aria-label="Copy"]').nth(3).locator("..").boundingBox();
-		const card = await stage.boundingBox();
+		let program, card;
+		for (const settled = Date.now() + 3000; ; await page.waitForTimeout(100)) {
+			program = await page.locator('[aria-label="Copy"]').nth(3).locator("..").boundingBox();
+			card = await stage.boundingBox();
+			if (card.x + card.width < program.x === beside || Date.now() > settled) { break; }
+		}
 		assert.equal(card.x + card.width < program.x, beside, `the stage is ${beside ? "not beside" : "beside"} its sample at ${width}px`);
 		if (!beside) { assert.ok(card.y >= program.y + program.height, `the stage is not under its sample at ${width}px`); }
 	}
