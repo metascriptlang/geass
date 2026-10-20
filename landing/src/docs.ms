@@ -1,18 +1,9 @@
 import { createMemo } from "../../../neon/src/core/memo";
-import { Accessor, Signal, accessor, createSignal } from "../../../neon/src/core/signal";
-import { Dispose } from "../../../neon/src/core/types";
-import { For, Show } from "../../../neon/src/macros/ui/flow";
+import { Show } from "../../../neon/src/macros/ui/flow";
 import { createStyles, styleOf } from "../../../neon/src/macros/ui/style";
 import { View } from "../../../neon/src/components/primitives";
-import {
-	RouteCodec,
-	RoutePlan,
-	RoutingError,
-	RoutingRegistry,
-	bindRoute,
-	createRouteParticipant,
-} from "../../../neon/src/navigation/routing";
-import { RoutingHistory, createRoutingSession } from "../../../neon/src/navigation/routingHistory";
+import { GuardDecision, RouteMatch, notFound, proceed } from "../../../neon/src/navigation/route";
+import { LayoutProps, useLocation, useParams } from "../../../neon/src/navigation/router";
 import { createContext, useContext } from "../../../neon/src/render/context";
 import { useWindowDimensions } from "../../../neon/src/render/environment";
 import { NeonNode } from "../../../neon/src/render/node";
@@ -64,6 +55,7 @@ const PAGES: DocsPage[] = [
 struct Place {
 	path: string;
 	tone: string;
+	anchor: string;
 }
 
 function indexOfPage(path: string): int32 {
@@ -73,75 +65,27 @@ function indexOfPage(path: string): int32 {
 	return -1;
 }
 
-function placeOf(path: string): Place {
+function placeOf(path: string, hash: string): Place {
 	const at = indexOfPage(path);
-	return { path, tone: at >= 0 ? PAGES[at].tone : "start" };
+	return { path, tone: at >= 0 ? PAGES[at].tone : "start", anchor: hash === "" ? "" : "#" + hash };
 }
 
-const Here = createContext<() => Place>((): Place => placeOf("/docs"));
+const Here = createContext<() => Place>((): Place => placeOf("/docs", ""));
 const NESTED = [
 	"#the-account", "#the-instructions", "#the-entry", "#syntax",
 	"#explicit-lifecycle", "#proofs", "#types-first", "#no-lifetimes",
 	"#signers", "#program-accounts", "#external-accounts",
 ];
 const FORKED = ["#reading", "#what-differs", "#proof-types"];
-const [picked, setPicked] = createSignal("");
 
-function shade(tone: string, to: string): string {
-	if (picked() === to) { return tone; }
-	const opened = NESTED.includes(picked()) || FORKED.includes(picked());
+function shade(spot: Place, to: string): string {
+	if (spot.anchor === to) { return spot.tone; }
+	const opened = NESTED.includes(spot.anchor) || FORKED.includes(spot.anchor);
 	return opened && !NESTED.includes(to) ? "dim" : "";
 }
 
-function isDocsPage(path: string): boolean {
-	return indexOfPage(path) >= 0;
-}
-
-function pathOf(address: string): string {
-	const queryAt = address.indexOf("?");
-	const hashAt = address.indexOf("#");
-	let end = queryAt >= 0 ? queryAt : hashAt >= 0 ? hashAt : address.length;
-	while (end > 0 && address.charAt(end - 1) === "/") { end -= 1; }
-	return address.substring(0, end);
-}
-
-function anchorOf(address: string): string {
-	const hashAt = address.indexOf("#");
-	return hashAt < 0 ? "" : address.substring(hashAt, address.length);
-}
-
-export interface DocsSite {
-	path: Accessor<string>;
-	open: (url: string) => boolean;
-	dispose: Dispose;
-}
-
-export function createDocsSite(history: RoutingHistory): Result<DocsSite, RoutingError> {
-	const address = new Signal<string>("/docs");
-	const land = (to: string): void => { address.set(to); setPicked(anchorOf(to)); };
-	const codec: RouteCodec<string> = {
-		id: "docs",
-		decode: (to: string): Result<string, RoutingError> =>
-			isDocsPage(pathOf(to)) ? Result.ok(to) : Result.err(RoutingError.NoMatch),
-		encode: (to: string): Result<string, RoutingError> => Result.ok(to),
-	};
-	const registry = new RoutingRegistry("main");
-	registry.register(createRouteParticipant(
-		"main",
-		[bindRoute<string>(codec, (): string | null => address.get(), land)],
-		(): void => land("/docs"),
-		(): string => address.get(),
-		(state: string): Result<RoutePlan, RoutingError> => {
-			if (!isDocsPage(pathOf(state))) { return Result.err(RoutingError.IncompleteSnapshot); }
-			return Result.ok({ commit: (): void => land(state) });
-		},
-	));
-	const session = try createRoutingSession(registry, history, (failure: RoutingError): void => {});
-	return Result.ok({
-		path: accessor((): string => pathOf(address.get())),
-		open: (url: string): boolean => session.navigate(url, false).ok,
-		dispose: (): void => session.dispose(),
-	});
+export function knownPage(params: Map<string, string>, found: RouteMatch): GuardDecision {
+	return indexOfPage("/docs/" + (params.get("page") ?? "")) >= 0 ? proceed() : notFound();
 }
 
 const viewport = useWindowDimensions();
@@ -453,8 +397,8 @@ function Part(props: { title: string; at: string }): NeonNode {
 	const to = "#" + props.at;
 	const spot = useContext(Here);
 	return <View>
-		<a style={d.navPart({ state: shade(spot().tone, to) })} href={to}>{props.title}</a>
-		<View style={d.navBar({ state: shade(spot().tone, to) })} />
+		<a style={d.navPart({ state: shade(spot(), to) })} href={to}>{props.title}</a>
+		<View style={d.navBar({ state: shade(spot(), to) })} />
 	</View>;
 }
 
@@ -462,13 +406,13 @@ function Fork(props: { title: string; at: string; children: NeonNode }): NeonNod
 	const to = "#" + props.at;
 	const spot = useContext(Here);
 	return <View>
-		<a style={d.navPart({ state: shade(spot().tone, to) })} href={to}>{props.title}</a>
-		<View style={d.navTick({ state: shade(spot().tone, to) })} />
+		<a style={d.navPart({ state: shade(spot(), to) })} href={to}>{props.title}</a>
+		<View style={d.navTick({ state: shade(spot(), to) })} />
 		<View style={d.navNested}>
 			<Hairline place={d.navPartsEdge} />
 			{props.children}
 		</View>
-		<View style={[d.navBar({ state: shade(spot().tone, to) }), d.navBarWhole]} />
+		<View style={[d.navBar({ state: shade(spot(), to) }), d.navBarWhole]} />
 	</View>;
 }
 
@@ -476,7 +420,7 @@ function Leaf(props: { path: string; children: NeonNode }): NeonNode {
 	const spot = useContext(Here);
 	const here = (): boolean => spot().path === props.path;
 	return <>
-		<a style={d.navPage({ state: here() && picked() === "" ? spot().tone : "" })} href={props.path}>
+		<a style={d.navPage({ state: here() && spot().anchor === "" ? spot().tone : "" })} href={props.path}>
 			{PAGES[indexOfPage(props.path)].title.toUpperCase()}
 		</a>
 		<Show when={wide() && here()}>
@@ -522,10 +466,16 @@ function Turn(props: { path: string }): NeonNode {
 	</View>;
 }
 
-export function Docs(props: { site: DocsSite }): NeonNode {
-	const path = props.site.path;
-	return <Here value={(): Place => placeOf(path())}><View style={d.page}>
-		<PagePlace path={path()} />
+export function DocsArticle(): NeonNode {
+	const name = useParams().get("page");
+	const at = name === null ? "/docs" : "/docs/" + (name as string);
+	return <>{page(at)}<Turn path={at} /></>;
+}
+
+export function Docs(props: LayoutProps): NeonNode {
+	const location = useLocation();
+	return <Here value={(): Place => placeOf(location().pathname, location().hash)}><View style={d.page}>
+		<PagePlace path={location().pathname} />
 		<View style={d.header}>
 			<a style={d.brand} href="/">GEASS</a>
 			<span style={d.label}>DOCS</span>
@@ -733,7 +683,7 @@ export function Docs(props: { site: DocsSite }): NeonNode {
 			</Group>
 		</View>
 		<View style={d.article({ layout: wide() ? "" : "narrow" })}>
-			<For each={[path()]}>{(at: string): NeonNode => <>{page(at)}<Turn path={at} /></>}</For>
+			{props.children}
 		</View>
 	</View></Here>;
 }

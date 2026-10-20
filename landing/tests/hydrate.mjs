@@ -109,7 +109,25 @@ try {
 	await docs.getByRole("link", { name: "HOME", exact: true }).click();
 	await docs.waitForURL(base + "/");
 	await docs.locator("canvas#canvas").waitFor({ state: "attached" });
-	assert.equal(await docs.evaluate(() => window.sameDocument), undefined, "the home link did not load the home page as a new document");
+	assert.equal(await docs.evaluate(() => window.sameDocument), true, "the home link reloaded the page");
+	assert.equal(await docs.title(), "Geass — MetaScript for Solana");
+	await docs.waitForFunction(() => document.querySelector("canvas#canvas")?.voidStop);
+	const frames = () => docs.evaluate(() => new Promise((done) => {
+		let count = 0;
+		const raf = window.requestAnimationFrame;
+		window.requestAnimationFrame = (step) => raf((at) => { count++; step(at); });
+		setTimeout(() => { window.requestAnimationFrame = raf; done(count); }, 1000);
+	}));
+	assert.ok(await frames() > 0, "the mech does not draw on the home page reached by a link");
+	await docs.getByRole("link", { name: "Docs", exact: true }).first().click();
+	await docs.waitForURL("**/docs");
+	assert.equal(await frames(), 0, "the mech kept drawing after its page was left");
+	await docs.getByRole("link", { name: "HOME", exact: true }).click();
+	await docs.waitForURL(base + "/");
+	await docs.waitForFunction(() => document.querySelector("canvas#canvas")?.voidStop);
+	assert.ok(await frames() > 0, "the mech does not draw when the home page is entered again");
+	assert.equal(await docs.locator('script[src$="mechView.js"]').count(), 1, "the mech's script was loaded twice in one document");
+	assert.equal(await docs.evaluate(() => window.sameDocument), true, "going home again reloaded the page");
 
 	assert.deepEqual(errors, []);
 	console.log("PASS: the Worker's home, docs and 404 pages are attached to in Chrome at served and other widths, docs links move without a reload, no browser errors");

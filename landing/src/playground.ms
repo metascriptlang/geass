@@ -49,10 +49,6 @@ const [shown, setShown] = createSignal<int32>(0);
 const [copied, setCopied] = createSignal(false);
 const [reply, setReply] = createSignal<RunReply>(IDLE);
 
-export function atPlayground(path: string): boolean {
-	return path === "/playground";
-}
-
 const p = createStyles({
 	page: {
 		position: "fixed",

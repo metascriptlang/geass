@@ -2,25 +2,26 @@ import { element } from "../../../neon/src/macros/ui/element";
 import { publishWindow } from "../../../neon/src/render/environment";
 import { SsrMarkup, renderToMarkup } from "../../../neon/src/render/ssr";
 import { createRequestRoutingHistory } from "../../../neon/src/navigation/routingHistory";
-import { Docs, createDocsSite } from "./docs";
-import { Home } from "./home";
+import { RouterProvider, createRouter } from "../../../neon/src/navigation/router";
 import { NotFound } from "./notFound";
-import { Playground, atPlayground } from "./playground";
+import { routes } from "./routes";
 
-export function page(path: string, width: number): SsrMarkup {
-	publishWindow(width, 0);
-	if (path === "") { return renderToMarkup(element(<Home />)); }
-	if (atPlayground(path)) { return renderToMarkup(element(<Playground />)); }
-	const site = createDocsSite(createRequestRoutingHistory(path));
-	if (!site.ok) { return { html: "", css: "", head: "" }; }
-	const docs = site.value;
-	try {
-		return renderToMarkup(element(<Docs site={docs} />));
-	} finally {
-		docs.dispose();
-	}
+export interface Served {
+	status: int32;
+	location: string | null;
+	markup: SsrMarkup;
 }
 
-export function notFoundPage(): SsrMarkup {
-	return renderToMarkup(element(<NotFound />));
+export function page(path: string, width: number): Served {
+	publishWindow(width, 0);
+	const opened = createRouter(routes, createRequestRoutingHistory(path));
+	if (!opened.ok) { return { status: 400, location: null, markup: renderToMarkup(element(<NotFound />)) }; }
+	const router = opened.value;
+	try {
+		const response = router.response();
+		if (response.location !== null) { return { status: response.status, location: response.location, markup: { html: "", css: "", head: "" } }; }
+		return { status: response.status, location: null, markup: renderToMarkup(element(<RouterProvider router={router} />)) };
+	} finally {
+		router.dispose();
+	}
 }
