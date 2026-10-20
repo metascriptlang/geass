@@ -7,6 +7,8 @@ const EXAMPLES = [hello, counter, vault, escrow];
 const NAMES = ["hello", "counter", "vault", "escrow"];
 const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
 const RUNNER = LOCAL ? "http://127.0.0.1:8787/run" : "https://run.metascriptlang.org/run";
+const MSC = "/msc/";
+const IN_PAGE = typeof WebAssembly.Suspending === "function";
 const SHARED = "#code=";
 const ANSI = /\u001b\[[0-9;]*m/g;
 
@@ -105,18 +107,61 @@ function lines(text) {
 	return text.replace(ANSI, "").split("\n").map((line) => line.replace(/\s+$/, "").replace(/ /g, "\u00a0")).filter((line, at, all) => line !== "" || (at > 0 && at < all.length - 1));
 }
 
+function compiler() {
+	return (globalThis.geassMsc ??= new Promise((resolve, reject) => {
+		const script = Object.assign(document.createElement("script"), { src: MSC + "msc.js" });
+		script.onload = () => resolve(globalThis.createMsc);
+		script.onerror = () => reject(new Error(`the compiler at ${MSC}msc.js could not be loaded`));
+		document.head.appendChild(script);
+	}));
+}
+
+async function runHere(code) {
+	const said = [];
+	const msc = await (await compiler())({ locateFile: (file) => MSC + file, print: (line) => said.push(line), printErr: (line) => said.push(line) });
+	msc.FS.mkdir("/work");
+	msc.FS.writeFile("/work/main.ms", code);
+	let status;
+	try {
+		status = await msc.callMain(["build", "/work/main.ms", "--target=js", "--output=/work/main.js", "--no-color"]);
+	} catch (error) {
+		if (error.status === undefined) { throw error; }
+		status = error.status;
+	}
+	if ((status ?? 0) !== 0) { return { success: false, stdout: "", stderr: said.join("\n") }; }
+	const url = URL.createObjectURL(new Blob([msc.FS.readFile("/work/main.js", { encoding: "utf8" })], { type: "text/javascript" }));
+	const printed = [];
+	const log = console.log;
+	console.log = (...parts) => { printed.push(parts.join(" ")); };
+	try {
+		await import(/* @vite-ignore */ url);
+		return { success: true, stdout: printed.join("\n"), stderr: "" };
+	} catch (error) {
+		return { success: false, stdout: printed.join("\n"), stderr: `Error: ${error.message}` };
+	} finally {
+		console.log = log;
+		URL.revokeObjectURL(url);
+	}
+}
+
+async function runThere(code) {
+	const response = await fetch(RUNNER, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ code, target: "c" }),
+	}).catch((error) => { throw new Error(`the runner at ${new URL(RUNNER).host} could not be reached: ${error.message}`); });
+	const reply = await response.json();
+	if (!response.ok) { throw new Error(reply.error ?? `the runner answered ${response.status}`); }
+	return { success: reply.success, stdout: reply.stdout ?? "", stderr: reply.stderr || reply.error || "" };
+}
+
 export function run(done) {
 	const started = performance.now();
 	const report = (ok, out, problem) => done(JSON.stringify({
 		ok, lines: out, problem, ms: Math.round(performance.now() - started),
 	}));
-	fetch(RUNNER, {
-		method: "POST",
-		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ code: area.value, target: "c" }),
-	}).then((response) => response.json().then((reply) => {
-		if (!response.ok) { report(false, [], [reply.error ?? `the runner answered ${response.status}`]); return; }
-		const problem = lines((reply.stderr || reply.error || "the program failed").replace(/\S*\/main\.ms/g, "main.ms"));
-		report(reply.success, lines(reply.stdout ?? ""), reply.success ? [] : problem);
-	})).catch((error) => report(false, [], [`the runner at ${new URL(RUNNER).host} could not be reached: ${error.message}`]));
+	(IN_PAGE ? runHere(area.value) : runThere(area.value)).then((reply) => {
+		const problem = lines((reply.stderr || "the program failed").replace(/\S*\/main\.ms/g, "main.ms"));
+		report(reply.success, lines(reply.stdout), reply.success ? [] : problem);
+	}, (error) => report(false, [], [error.message]));
 }

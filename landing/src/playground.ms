@@ -278,7 +278,7 @@ export function Playground(): NeonNode {
 				<View style={p.output}>
 					<Show when={reply().ms < 0 && !running()}>
 						<p style={p.empty}>
-							Press Run. The program is compiled to native code and its instructions are executed
+							Press Run. The program is compiled in your browser and its instructions are executed
 							against a simulated Solana runtime: real account checks, real System CPIs, no wallet.
 						</p>
 					</Show>

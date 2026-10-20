@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { chromium } from "playwright-core";
 import { preview } from "vite";
 
@@ -9,6 +13,7 @@ try {
 		executablePath: process.env.CHROME_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 	});
 	const page = await browser.newPage();
+	await page.addInitScript(() => { delete WebAssembly.Suspending; });
 	const errors = [];
 	page.on("pageerror", error => errors.push(error.message));
 	const sent = [];
@@ -51,8 +56,34 @@ try {
 		await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth, null, { timeout: 2000 })
 			.catch(() => assert.fail(`horizontal overflow at ${width}px`));
 	}
+
+	const here = await browser.newPage();
+	here.on("pageerror", error => errors.push(error.message));
+	await here.route("**/run", route => route.abort());
+	await here.goto(`http://127.0.0.1:${port}/playground`, { waitUntil: "load" });
+	for (const [tab, name] of [["Hello", "hello"], ["Counter", "counter"], ["Vault", "vault"], ["Escrow", "escrow"]]) {
+		const dir = mkdtempSync(join(tmpdir(), "geassHere-"));
+		let printed;
+		try {
+			copyFileSync(new URL(`../src/playground/${name}.txt`, import.meta.url), join(dir, "main.ms"));
+			execFileSync(process.env.MSC ?? "msc", ["build", "main.ms", "--no-color"], { cwd: dir, stdio: "pipe" });
+			printed = execFileSync(join(dir, "out/debug/main"), [], { cwd: dir, encoding: "utf8" }).split("\n").map(line => line.trimEnd()).filter(line => line !== "");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+		await here.getByText(tab, { exact: true }).click();
+		await here.getByText("Run", { exact: true }).click();
+		await here.waitForFunction(() => /ran in \d+ ms|did not build/.test(document.body.innerText) && !document.body.innerText.includes("compiling and running"), null, { timeout: 60000 });
+		await here.getByText(printed.at(-1).trim(), { exact: true }).last().waitFor({ timeout: 60000 })
+			.catch(async () => assert.fail(`${name}: the in-page run did not print the C run's lines: ${await here.locator("body").innerText()}`));
+		const shown = (await here.locator("body").innerText()).split("\n").map(line => line.replace(/ /g, " ").trimEnd());
+		const at = shown.indexOf(printed[0]);
+		assert.deepEqual(shown.slice(at, at + printed.length), printed, `${name}: the in-page run printed other lines than the C run`);
+	}
+	await here.close();
+
 	assert.deepEqual(errors, []);
-	console.log("PASS: playground edits, runs through the runner contract, shows refusals and build errors, no browser errors");
+	console.log("PASS: playground edits, runs the four programs in the page with the C run's output, falls back to the runner contract without JSPI, shows refusals and build errors, no browser errors");
 } finally {
 	await browser?.close();
 	await server.close();

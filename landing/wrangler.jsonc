@@ -12,7 +12,7 @@
 		"directory": "./dist",
 		"binding": "ASSETS",
 		"not_found_handling": "none",
-		"run_worker_first": ["/*", "!/assets/*", "!/void/*"]
+		"run_worker_first": ["/*", "!/assets/*", "!/void/*", "!/msc/msc.js"]
 	},
 	"routes": [{ "pattern": "geass.metascriptlang.org", "custom_domain": true }]
 }

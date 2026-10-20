@@ -2,10 +2,19 @@ import { notFoundPage, page } from "./out/server.js";
 
 const PHONE = 390;
 const DESKTOP = 1440;
+const PACKED = /^\/msc\/msc\.(wasm|data)$/;
 
 export default {
 	async fetch(request, env) {
 		const url = new URL(request.url);
+		const packed = PACKED.exec(url.pathname);
+		if (packed !== null) {
+			const asset = await env.ASSETS.fetch(new URL(url.pathname + ".br", url));
+			const headers = new Headers(asset.headers);
+			headers.set("content-type", packed[1] === "wasm" ? "application/wasm" : "application/octet-stream");
+			headers.set("content-encoding", "br");
+			return new Response(asset.body, { status: asset.status, headers, encodeBody: "manual" });
+		}
 		const path = url.pathname.replace(/\/+$/, "");
 		const shell = () => env.ASSETS.fetch(new URL("/", url));
 
