@@ -55,14 +55,19 @@ function shapeOf(idl, program, spec, where) {
 	const accounts = idl.accounts.map(account => {
 		const declared = idl.types.find(type => type.name === account.name);
 		if (!declared) { throw new Error(`${where}: the IDL has no type for the account ${account.name}`); }
-		const fields = [{ name: "discriminator", type: "[u8; 8]", offset: 0, size: 8 }];
+		const line = lineOf(program, new RegExp(`struct ${account.name}\\b`), where);
+		const tagLine = lineOf(program, new RegExp(`function discriminator\\(this typeof ${account.name}\\)`), where);
+		const fields = [{ name: "discriminator", type: "[u8; 8]", offset: 0, size: 8, line: tagLine }];
 		let offset = 8;
-		for (const field of declared.type.fields) {
+		for (const [at, field] of declared.type.fields.entries()) {
 			const type = typeOf(field.type, `${where}: ${account.name}.${field.name}`);
-			fields.push({ name: field.name, type: type.name, offset, size: type.size });
+			const fieldLine = line + 1 + at;
+			if (!new RegExp(`^\\s*${field.name}:`).test(program.split("\n")[fieldLine])) {
+				throw new Error(`${where}: ${account.name}.${field.name} is not on line ${fieldLine + 1} of the program`);
+			}
+			fields.push({ name: field.name, type: type.name, offset, size: type.size, line: fieldLine });
 			offset += type.size;
 		}
-		const line = lineOf(program, new RegExp(`struct ${account.name}\\b`), where);
 		return { name: account.name, tag: hex(account.discriminator), size: offset, line, fields };
 	});
 	const instructions = idl.instructions.map(instruction => {
