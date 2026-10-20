@@ -2,7 +2,7 @@ import { NeonNode } from "../../../../neon/src/render/node";
 import {
 	Head, Heading, L, Lede, M, Note, P, Row, Sample, Subheading, Table, Title, Warning, tone,
 } from "../ui/prose";
-import { Staged } from "../ui/stage";
+import { Staged, Tryout } from "../ui/stage";
 
 const INIT_CODE = "$ msc init counter
 $ cd counter";
@@ -239,12 +239,14 @@ export function FirstProgram(): NeonNode {
 		<Lede t={"Build a counter, test it on your machine, put it on Solana's devnet and call it " +
 			"from TypeScript."} />
 		<Heading at="goal" title="What you will build" />
-		<P>
-			A counter that lives on chain. Any wallet can create it once; after that only the
-			wallet that created it can add one. It is small, but it has every part a real
-			program has: state kept in an account, two instructions, a check on who is calling,
-			a test and a client.
-		</P>
+		<Tryout code={PROGRAM_CODE}>
+			<P>
+				A counter that lives on chain. Any wallet can create it once; after that only the
+				wallet that created it can add one. It is small, but it has every part a real
+				program has: state kept in an account, two instructions, a check on who is calling,
+				a test and a client.
+			</P>
+		</Tryout>
 		<P>
 			You need <M t="msc" /> and the Solana CLI from{" "}
 			<L to="/docs" t="Getting started" />, and Node 24 for the client at the end.

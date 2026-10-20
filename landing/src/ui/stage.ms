@@ -6,6 +6,7 @@ import { Pressable, Text, View } from "../../../../neon/src/components/primitive
 import { Circle, Path, Svg } from "../../../../neon/src/components/svg/elements";
 import { useWindowDimensions } from "../../../../neon/src/render/environment";
 import { NeonNode } from "../../../../neon/src/render/node";
+import { HostNode } from "../../../../neon/src/render/hostTypes";
 import { fingerprint } from "std/hash";
 import { Layers, layersHeight } from "../../../isoline/src/layers";
 import { theme } from "../theme";
@@ -52,6 +53,33 @@ struct ProgramShape {
 	errors: ShapeError[];
 }
 
+struct CounterState {
+	program: string;
+	authority: string;
+	count: string;
+}
+
+struct CallReply {
+	op: string;
+	signature: string;
+	ok: boolean;
+	failure: string;
+	code: int32;
+	units: int32;
+	before: string;
+	after: string;
+}
+
+struct Failure {
+	failure: string;
+}
+
+struct TryCall {
+	op: string;
+	title: string;
+	hint: string;
+}
+
 struct StageCard {
 	line: int32;
 	top: number;
@@ -75,7 +103,19 @@ const HEAD_GAP = 12;
 const LEGEND = 36;
 const ROW = 26;
 const CARD_GAP = 12;
+const EXPLORER = "https://explorer.solana.com";
+const COUNTER_PROGRAM = "7PQcxszNYMSBRWWAxzCXHRPVnbiDLpiHMkMGs3sg8hcM";
+const TRY_CALLS: TryCall[] = [
+	{ op: "increment", title: "Add one as the authority", hint: "the wallet that made it signs" },
+	{ op: "stranger", title: "Add one as a stranger", hint: "any other wallet signs" },
+	{ op: "create", title: "Create it again", hint: "the account exists already" },
+];
 const viewport = useWindowDimensions();
+
+extern function readCounter(done: (text: string) => void): void
+	from "import('devnet-relay').then(relay => relay.readCounter(#))";
+extern function sendCall(op: string, done: (text: string) => void): void
+	from "import('devnet-relay').then(relay => relay.sendCall(#, #))";
 
 export const STAGE_COLUMN = CARD + WIRE;
 export const roomy = createMemo(() => viewport().width >= 1400);
@@ -146,10 +186,30 @@ const s = createStyles({
 				writable: { color: "#6cb6ff", backgroundColor: "rgba(108, 182, 255, 0.14)" },
 				pda: { color: "#b78cff", backgroundColor: "rgba(183, 140, 255, 0.14)" },
 				program: { color: "#5fd4a0", backgroundColor: "rgba(95, 212, 160, 0.14)" },
+				op: { color: "#d5d3d1", backgroundColor: "#202125" },
 			},
 		},
 	},
 	code: { width: 48, fontSize: 16, fontWeight: "700", color: TONE },
+	tryout: { fontSize: 13, lineHeight: 20 },
+	about: { marginBottom: 14, color: "#93908d" },
+	count: { fontSize: 28, fontWeight: "700", lineHeight: 34, color: "#d5d3d1" },
+	link: { color: "#93908d", textDecorationLine: "none" },
+	tryCall: {
+		marginTop: 8,
+		paddingTop: 8,
+		paddingBottom: 8,
+		paddingLeft: 12,
+		paddingRight: 12,
+		borderWidth: 1,
+		borderColor: "#2a2b30",
+		borderRadius: 4,
+		cursor: "pointer",
+	},
+	tryTitle: { color: "#d5d3d1" },
+	reply: { marginTop: 12 },
+	ok: { color: "#5fd4a0" },
+	err: { color: TONE },
 });
 
 function shapeOf(code: string): ProgramShape {
@@ -365,6 +425,104 @@ export function Staged(props: { code: string; idl: string }): NeonNode {
 						<Show when={card.errors.length > 0}><Errors errors={card.errors} /></Show>
 					</View>}
 			</For>
+		</View>
+	</View>;
+}
+
+function shortOf(key: string): string {
+	return key.length > 12 ? `${key.slice(0, 4)}…${key.slice(key.length - 4)}` : key;
+}
+
+function explorerOf(path: string): string {
+	return `${EXPLORER}/${path}?cluster=devnet`;
+}
+
+function failureIn(text: string): string {
+	const parsed: Result<Failure, string> = JSON.parse<Failure>(text);
+	return parsed.ok ? parsed.value.failure : text;
+}
+
+function outcomeOf(reply: CallReply, errors: ShapeError[]): string {
+	if (reply.ok) { return `${reply.before} → ${reply.after} · ${reply.units} CU`; }
+	const known = errors.find((error: ShapeError): boolean => error.code === reply.code);
+	return known == null ? reply.failure : `#${reply.code} ${known.name}`;
+}
+
+export function Tryout(props: { code: string; children: NeonNode }): NeonNode {
+	const errors = shapeOf(props.code).errors;
+	const [state, setState] = createSignal<CounterState>({
+		program: COUNTER_PROGRAM, authority: "", count: "…",
+	});
+	const [note, setNote] = createSignal<string>("reading the counter from devnet…");
+	const [busy, setBusy] = createSignal<boolean>(false);
+	const [replies, setReplies] = createSignal<CallReply[]>([]);
+	const read = (text: string): void => {
+		const parsed: Result<CounterState, string> = JSON.parse<CounterState>(text);
+		if (parsed.ok) { setState(parsed.value); setNote(""); } else { setNote(failureIn(text)); }
+	};
+	const answered = (text: string): void => {
+		setBusy(false);
+		const parsed: Result<CallReply, string> = JSON.parse<CallReply>(text);
+		if (!parsed.ok) { setNote(failureIn(text)); return; }
+		setNote("");
+		setReplies([parsed.value, ...replies()].slice(0, 3));
+		readCounter(read);
+	};
+	const send = (op: string): void => {
+		if (busy()) { return; }
+		setBusy(true);
+		setNote("sending, waiting for devnet to confirm…");
+		sendCall(op, answered);
+	};
+	const wired: StageCard = { line: 0, top: 0, accounts: [], instructions: [], errors: [] };
+	return <View style={s.staged}>
+		{props.children}
+		<View style={roomy() ? s.column : s.columnInline}>
+			<View
+				style={[s.card, s.tryout, roomy() ? styleOf({ top: 0 }) : s.cardInline]}
+				ref={(node: HostNode): void => { readCounter(read); }}
+			>
+				<Show when={roomy()}><Wire card={wired} /></Show>
+				<View style={s.head}>
+					<span>TRY IT ON DEVNET</span>
+					<a style={[s.tag, s.link]} href={explorerOf(`address/${state().program}`)}>
+						program ↗
+					</a>
+				</View>
+				<Text style={s.about}>
+					This counter is deployed on Solana's devnet. Each button sends a real
+					transaction and shows what the program answered.
+				</Text>
+				<View style={s.row}>
+					<Text style={s.input}>count</Text>
+					<Text style={s.count}>{state().count}</Text>
+				</View>
+				<View style={s.row}>
+					<Text style={s.input}>authority</Text>
+					<Text>{shortOf(state().authority)}</Text>
+				</View>
+				<For each={TRY_CALLS}>
+					{(tried: TryCall): NeonNode => <Pressable
+						style={s.tryCall}
+						accessibilityLabel={tried.title}
+						onPress={(): void => { send(tried.op); }}
+					>
+						<Text style={s.tryTitle}>▸ {tried.title}</Text>
+						<Text style={s.fieldType}>{tried.op} · {tried.hint}</Text>
+					</Pressable>}
+				</For>
+				<Show when={note() !== ""}><Text style={s.about}>{note()}</Text></Show>
+				<For each={replies()}>
+					{(reply: CallReply): NeonNode => <View style={s.reply}>
+						<Text style={reply.ok ? s.ok : s.err}>
+							{reply.ok ? "✓" : "✗"} {reply.op} · {outcomeOf(reply, errors)}
+						</Text>
+						<a style={s.link} href={explorerOf(`tx/${reply.signature}`)}>
+							{shortOf(reply.signature)} on the explorer ↗
+						</a>
+					</View>}
+				</For>
+			</View>
 		</View>
 	</View>;
 }
