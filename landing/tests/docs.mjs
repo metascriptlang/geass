@@ -103,17 +103,19 @@ try {
 	}
 	await page.waitForFunction(() => !document.querySelector('[aria-label="Copied"]'));
 	await page.goto(`http://127.0.0.1:${port}/docs/first-program#program`, { waitUntil: "networkidle" });
-	const stage = page.locator("div", { hasText: /^AS CLIENTS SEE IT/ }).last();
-	assert.match(await stage.innerText(), /ACCOUNT Counter\s+56 BYTES[\s\S]*40\s+count\s+u64\s+8/);
-	assert.match(await stage.innerText(), /CALL increment[\s\S]*counter\s+writable · PDA of "counter"[\s\S]*6000\s+NotYourCounter/);
+	const stage = page.getByText("ACCOUNT · Counter").locator("../..");
+	const shown = await page.locator("body").innerText();
+	assert.match(shown, /ACCOUNT · Counter\s+56 BYTES[\s\S]*count\s+u64\s+bytes 40–47/);
+	assert.match(shown, /CALL · increment[\s\S]*counter\s+WRITABLE\s+PDA "counter"/);
+	assert.match(shown, /ERRORS\s+6000\s+NotYourCounter/);
 	for (const [width, beside] of [[1440, true], [1439, false], [390, false]]) {
 		await page.setViewportSize({ width, height: 900 });
 		await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth, null, { timeout: 2000 })
 			.catch(() => assert.fail(`the stage overflows at ${width}px`));
 		const program = await page.locator('[aria-label="Copy"]').nth(3).locator("..").boundingBox();
-		const shown = await stage.boundingBox();
-		assert.equal(shown.x > program.x + program.width, beside, `the stage is ${beside ? "not beside" : "beside"} its sample at ${width}px`);
-		if (!beside) { assert.ok(shown.y >= program.y + program.height, `the stage is not under its sample at ${width}px`); }
+		const card = await stage.boundingBox();
+		assert.equal(card.x > program.x + program.width, beside, `the stage is ${beside ? "not beside" : "beside"} its sample at ${width}px`);
+		if (!beside) { assert.ok(card.y >= program.y + program.height, `the stage is not under its sample at ${width}px`); }
 	}
 	if (process.env.DOCS_SHOT) {
 		for (const [name, path, width, height] of [["start", "/docs", 1672, 941], ["anchor", "/docs/from-anchor", 1672, 941], ["accounts", "/docs/accounts#proof-types", 1672, 941], ["validation", "/docs/validation", 1672, 941], ["testing", "/docs/testing#asserting", 1672, 941], ["clients", "/docs/clients#codama", 1672, 941], ["deploying", "/docs/deploying", 1672, 941], ["tokens", "/docs/tokens#checks", 1672, 941], ["tokensPhone", "/docs/tokens", 390, 844], ["rollups", "/docs/rollups#delegated", 1672, 941], ["randomness", "/docs/randomness", 1672, 941], ["cranks", "/docs/cranks#creating", 1672, 941], ["security", "/docs/security#always-on", 1672, 941], ["performance", "/docs/performance", 1672, 941], ["performancePhone", "/docs/performance", 390, 844], ["phone", "/docs/accounts", 390, 844]]) {

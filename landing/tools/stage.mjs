@@ -30,17 +30,28 @@ function seedText(seed) {
 
 function checksOf(account) {
 	const checks = [];
-	if (account.signer) { checks.push("signs"); }
-	if (account.writable) { checks.push("writable"); }
-	if (account.address === SYSTEM_PROGRAM) { checks.push("the System program"); }
-	else if (account.address) { checks.push(`at ${account.address}`); }
-	if (account.pda) { checks.push(`PDA of ${account.pda.seeds.map(seedText).join(", ")}`); }
-	return checks.length > 0 ? checks.join(" · ") : "read only";
+	if (account.signer) { checks.push("SIGNS"); }
+	if (account.writable) { checks.push("WRITABLE"); }
+	if (account.address === SYSTEM_PROGRAM) { checks.push("SYSTEM PROGRAM"); }
+	else if (account.address) { checks.push(`AT ${account.address.slice(0, 4)}…`); }
+	if (account.pda) { checks.push(`PDA ${account.pda.seeds.map(seedText).join(" ")}`); }
+	return checks;
 }
 
 const hex = bytes => bytes.map(b => b.toString(16).padStart(2, "0")).join(" ");
 
-function shapeOf(idl, where) {
+const snake = name => name.replace(/(?<=[a-z0-9])([A-Z])/g, "_$1").toLowerCase();
+
+function lineOf(program, pattern, where) {
+	const at = program.split("\n").findIndex(line => pattern.test(line));
+	if (at < 0) { throw new Error(`${where}: no line of the program matches ${pattern}`); }
+	return at;
+}
+
+function shapeOf(idl, program, spec, where) {
+	const holders = new Map([...spec.matchAll(/\b([A-Z]\w*): \[(\w+)/g)].map(m => [snake(m[1]), m[2]]));
+	const errors = /\berrors: (\w+)/.exec(spec);
+	if (!errors) { throw new Error(`${where}: the IDL spec names no errors enum`); }
 	const accounts = idl.accounts.map(account => {
 		const declared = idl.types.find(type => type.name === account.name);
 		if (!declared) { throw new Error(`${where}: the IDL has no type for the account ${account.name}`); }
@@ -51,15 +62,25 @@ function shapeOf(idl, where) {
 			fields.push({ name: field.name, type: type.name, offset, size: type.size });
 			offset += type.size;
 		}
-		return { name: account.name, tag: hex(account.discriminator), size: offset, fields };
+		const line = lineOf(program, new RegExp(`struct ${account.name}\\b`), where);
+		return { name: account.name, tag: hex(account.discriminator), size: offset, line, fields };
 	});
-	const instructions = idl.instructions.map(instruction => ({
-		name: instruction.name,
-		tag: hex(instruction.discriminator),
-		accounts: instruction.accounts.map(account => ({ name: account.name, checks: checksOf(account) })),
-	}));
-	const errors = idl.errors.map(error => ({ code: error.code, name: error.name }));
-	return { accounts, instructions, errors };
+	const instructions = idl.instructions.map(instruction => {
+		const holder = holders.get(instruction.name);
+		if (!holder) { throw new Error(`${where}: the IDL spec names no accounts struct for ${instruction.name}`); }
+		return {
+			name: instruction.name,
+			tag: hex(instruction.discriminator),
+			line: lineOf(program, new RegExp(`struct ${holder}\\b`), where),
+			accounts: instruction.accounts.map(account => ({ name: account.name, checks: checksOf(account) })),
+		};
+	});
+	return {
+		accounts,
+		instructions,
+		errorsLine: lineOf(program, new RegExp(`enum ${errors[1]}\\b`), where),
+		errors: idl.errors.map(error => ({ code: error.code, name: error.name })),
+	};
 }
 
 function idlOf(program, spec, where) {
@@ -89,7 +110,8 @@ for (const { full, source } of sourcesUnder(path.join(landing, "src"), target)) 
 	for (const use of source.matchAll(/<Staged code=\{(\w+)\} idl=\{(\w+)\}/g)) {
 		const where = `${path.relative(landing, full)}:${source.slice(0, use.index).split("\n").length}`;
 		const program = constAt(source, use[1], where);
-		const shape = shapeOf(idlOf(program, constAt(source, use[2], where), where), where);
+		const spec = constAt(source, use[2], where);
+		const shape = shapeOf(idlOf(program, spec, where), program, spec, where);
 		entries.push(`\tshapes.set(${fingerprint(program)}, ${JSON.stringify(JSON.stringify(shape))});`);
 	}
 }
