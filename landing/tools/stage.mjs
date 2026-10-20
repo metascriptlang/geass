@@ -7,7 +7,7 @@ import { constAt, fingerprint, sourcesUnder } from "./sampleSource.mjs";
 
 const landing = fileURLToPath(new URL("..", import.meta.url));
 const target = path.join(landing, "src/ui/stageShapes.ms");
-const PROGRAM_ID = "BoPYRB7dosWryTV6q7HgHj5SkgtQczT2aLbuixC2EgmD";
+const PROGRAM_ID = "7PQcxszNYMSBRWWAxzCXHRPVnbiDLpiHMkMGs3sg8hcM";
 const SYSTEM_PROGRAM = "11111111111111111111111111111111";
 const SIZES = { bool: 1, u8: 1, i8: 1, u16: 2, i16: 2, u32: 4, i32: 4, u64: 8, i64: 8, pubkey: 32 };
 

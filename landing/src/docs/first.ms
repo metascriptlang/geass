@@ -8,13 +8,13 @@ const INIT_CODE = "$ msc init counter
 $ cd counter";
 const KEYGEN_CODE = "$ solana-keygen new --no-bip39-passphrase -o target/deploy/counter-keypair.json
 $ solana address -k target/deploy/counter-keypair.json
-BoPYRB7dosWryTV6q7HgHj5SkgtQczT2aLbuixC2EgmD";
+7PQcxszNYMSBRWWAxzCXHRPVnbiDLpiHMkMGs3sg8hcM";
 const CONFIG_CODE = "import { BuildConfig } from \"std/build\";
 
 const config: BuildConfig = {
   root: \"src/index.ms\",
   defines: {
-    programId: \"BoPYRB7dosWryTV6q7HgHj5SkgtQczT2aLbuixC2EgmD\",
+    programId: \"7PQcxszNYMSBRWWAxzCXHRPVnbiDLpiHMkMGs3sg8hcM\",
     programKeypair: \"target/deploy/counter-keypair.json\",
   },
   fmt: {
@@ -176,7 +176,7 @@ const WALLET_CODE = "$ solana config set --url devnet
 $ solana-keygen new
 $ solana airdrop 2";
 const DEPLOY_CODE = "$ solana program deploy --program-id target/deploy/counter-keypair.json out/counter.so
-Program Id: BoPYRB7dosWryTV6q7HgHj5SkgtQczT2aLbuixC2EgmD";
+Program Id: 7PQcxszNYMSBRWWAxzCXHRPVnbiDLpiHMkMGs3sg8hcM";
 const NPM_CODE = "$ npm init -y
 $ npm pkg set type=module
 $ npm install @solana/kit";
@@ -195,7 +195,7 @@ const rpc = createSolanaRpc(\"https://api.devnet.solana.com\");
 const rpcSubscriptions = createSolanaRpcSubscriptions(\"wss://api.devnet.solana.com\");
 const send = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions });
 
-const program = address(\"BoPYRB7dosWryTV6q7HgHj5SkgtQczT2aLbuixC2EgmD\");
+const program = address(\"7PQcxszNYMSBRWWAxzCXHRPVnbiDLpiHMkMGs3sg8hcM\");
 const system = address(\"11111111111111111111111111111111\");
 const walletFile = readFileSync(`${homedir()}/.config/solana/id.json`, \"utf8\");
 const wallet = await createKeyPairSignerFromBytes(new Uint8Array(JSON.parse(walletFile)));

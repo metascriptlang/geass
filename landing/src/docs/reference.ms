@@ -3,7 +3,7 @@ import {
 	Head, Heading, L, Lede, M, Note, P, Row, Sample, Table, Title, Warning, tone,
 } from "../ui/prose";
 
-const CLI_ERROR_CODE = "Program BoPYRB7dosWryTV6q7HgHj5SkgtQczT2aLbuixC2EgmD failed: custom program error: 0x7d6";
+const CLI_ERROR_CODE = "Program 7PQcxszNYMSBRWWAxzCXHRPVnbiDLpiHMkMGs3sg8hcM failed: custom program error: 0x7d6";
 const KIT_ERROR_CODE = "SolanaError: Transaction simulation failed
   cause: SolanaError: Custom program error: #6000 (instruction #1)";
 const USER_ERROR_CODE = "export enum CounterError {
