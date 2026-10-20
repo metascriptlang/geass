@@ -102,7 +102,7 @@ export function share() {
 }
 
 function lines(text) {
-	return text.replace(ANSI, "").split("\n").map((line) => line.replace(/\s+$/, "").replace(/^ +/, (lead) => "\u00a0".repeat(lead.length))).filter((line, at, all) => line !== "" || (at > 0 && at < all.length - 1));
+	return text.replace(ANSI, "").split("\n").map((line) => line.replace(/\s+$/, "").replace(/ /g, "\u00a0")).filter((line, at, all) => line !== "" || (at > 0 && at < all.length - 1));
 }
 
 export function run(done) {
@@ -117,6 +117,6 @@ export function run(done) {
 	}).then((response) => response.json().then((reply) => {
 		if (!response.ok) { report(false, [], [reply.error ?? `the runner answered ${response.status}`]); return; }
 		const problem = lines((reply.stderr || reply.error || "the program failed").replace(/\S*\/main\.ms/g, "main.ms"));
-		report(reply.success, lines(reply.stdout ?? ""), reply.success ? [] : problem.map((line) => line.replace(/ /g, "\u00a0")));
+		report(reply.success, lines(reply.stdout ?? ""), reply.success ? [] : problem);
 	})).catch((error) => report(false, [], [`the runner at ${new URL(RUNNER).host} could not be reached: ${error.message}`]));
 }
