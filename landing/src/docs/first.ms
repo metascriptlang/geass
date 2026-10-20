@@ -2,6 +2,7 @@ import { NeonNode } from "../../../../neon/src/render/node";
 import {
 	Head, Heading, L, Lede, M, Note, P, Row, Sample, Subheading, Table, Title, Warning, tone,
 } from "../ui/prose";
+import { Staged } from "../ui/stage";
 
 const INIT_CODE = "$ msc init counter
 $ cd counter";
@@ -97,6 +98,17 @@ export function entry(): void {
 when (!testBuild) {
   entry();
 }";
+const COUNTER_IDL = "import { anchorIdl } from \"std/solana/idl\";
+import { Counter, CounterError, CounterOp, CreateAccounts, IncrementAccounts } from \"./index\";
+
+console.log(anchorIdl<CounterOp>({
+  name: \"counter\",
+  Create: [CreateAccounts],
+  Increment: [IncrementAccounts],
+  accounts: [Counter],
+  events: [],
+  errors: CounterError,
+}));";
 const TEST_CODE = "import {
   Pubkey, SYSTEM_PROGRAM_ID, declaredProgramId, decode, findProgramAddressOf,
   instructionDiscriminator,
@@ -253,7 +265,7 @@ export function FirstProgram(): NeonNode {
 		<P>The keypair is a private key. Keep it out of version control.</P>
 		<Heading at="program" title="The whole program" />
 		<P>Replace <M t="src/index.ms" /> with this. The next section reads it piece by piece.</P>
-		<Sample code={PROGRAM_CODE} />
+		<Staged code={PROGRAM_CODE} idl={COUNTER_IDL} />
 		<Heading at="reading" title="Reading it" />
 		<P>
 			Imports, functions, enums, <M t="const" /> and <M t="if" /> mean what they mean in

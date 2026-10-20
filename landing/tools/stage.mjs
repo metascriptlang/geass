@@ -1,0 +1,98 @@
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { constAt, fingerprint, sourcesUnder } from "./sampleSource.mjs";
+
+const landing = fileURLToPath(new URL("..", import.meta.url));
+const target = path.join(landing, "src/ui/stageShapes.ms");
+const PROGRAM_ID = "BoPYRB7dosWryTV6q7HgHj5SkgtQczT2aLbuixC2EgmD";
+const SYSTEM_PROGRAM = "11111111111111111111111111111111";
+const SIZES = { bool: 1, u8: 1, i8: 1, u16: 2, i16: 2, u32: 4, i32: 4, u64: 8, i64: 8, pubkey: 32 };
+
+function typeOf(type, where) {
+	if (typeof type === "string" && SIZES[type] !== undefined) { return { name: type, size: SIZES[type] }; }
+	if (type.array) {
+		const item = typeOf(type.array[0], where);
+		return { name: `[${item.name}; ${type.array[1]}]`, size: item.size * type.array[1] };
+	}
+	throw new Error(`${where}: no size for the IDL type ${JSON.stringify(type)}`);
+}
+
+function seedText(seed) {
+	if (seed.kind === "account") { return seed.path; }
+	if (seed.kind === "const" && seed.value.every(b => b >= 32 && b < 127)) {
+		return JSON.stringify(String.fromCharCode(...seed.value));
+	}
+	return seed.value.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function checksOf(account) {
+	const checks = [];
+	if (account.signer) { checks.push("signs"); }
+	if (account.writable) { checks.push("writable"); }
+	if (account.address === SYSTEM_PROGRAM) { checks.push("the System program"); }
+	else if (account.address) { checks.push(`at ${account.address}`); }
+	if (account.pda) { checks.push(`PDA of ${account.pda.seeds.map(seedText).join(", ")}`); }
+	return checks.length > 0 ? checks.join(" · ") : "read only";
+}
+
+const hex = bytes => bytes.map(b => b.toString(16).padStart(2, "0")).join(" ");
+
+function shapeOf(idl, where) {
+	const accounts = idl.accounts.map(account => {
+		const declared = idl.types.find(type => type.name === account.name);
+		if (!declared) { throw new Error(`${where}: the IDL has no type for the account ${account.name}`); }
+		const fields = [{ name: "discriminator", type: "[u8; 8]", offset: 0, size: 8 }];
+		let offset = 8;
+		for (const field of declared.type.fields) {
+			const type = typeOf(field.type, `${where}: ${account.name}.${field.name}`);
+			fields.push({ name: field.name, type: type.name, offset, size: type.size });
+			offset += type.size;
+		}
+		return { name: account.name, tag: hex(account.discriminator), size: offset, fields };
+	});
+	const instructions = idl.instructions.map(instruction => ({
+		name: instruction.name,
+		tag: hex(instruction.discriminator),
+		accounts: instruction.accounts.map(account => ({ name: account.name, checks: checksOf(account) })),
+	}));
+	const errors = idl.errors.map(error => ({ code: error.code, name: error.name }));
+	return { accounts, instructions, errors };
+}
+
+function idlOf(program, spec, where) {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "geass-stage-"));
+	fs.mkdirSync(path.join(dir, "src"));
+	fs.writeFileSync(path.join(dir, "build.ms"), "import { BuildConfig } from \"std/build\";\n\n" +
+		`const config: BuildConfig = {\n\troot: "src/index.ms",\n\tdefines: { programId: "${PROGRAM_ID}" },\n};\n\n` +
+		"export default config;\n");
+	fs.writeFileSync(path.join(dir, "src/index.ms"), program);
+	fs.writeFileSync(path.join(dir, "src/idl.ms"), spec);
+	try {
+		const out = execFileSync("msc", ["run", "--no-color", "src/idl.ms"],
+			{ cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+		const line = out.split("\n").find(text => text.startsWith("{"));
+		if (!line) { throw new Error(`${where}: msc run printed no IDL:\n${out}`); }
+		return JSON.parse(line);
+	} catch (error) {
+		if (error.stderr === undefined) { throw error; }
+		throw new Error(`${where}: the staged program does not build:\n${error.stderr}${error.stdout}`);
+	} finally {
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+}
+
+const entries = [];
+for (const { full, source } of sourcesUnder(path.join(landing, "src"), target)) {
+	for (const use of source.matchAll(/<Staged code=\{(\w+)\} idl=\{(\w+)\}/g)) {
+		const where = `${path.relative(landing, full)}:${source.slice(0, use.index).split("\n").length}`;
+		const program = constAt(source, use[1], where);
+		const shape = shapeOf(idlOf(program, constAt(source, use[2], where), where), where);
+		entries.push(`\tshapes.set(${fingerprint(program)}, ${JSON.stringify(JSON.stringify(shape))});`);
+	}
+}
+fs.writeFileSync(target, "export function stageShapes(): Map<int64, string> {\n" +
+	"\tconst shapes = new Map<int64, string>();\n" + entries.join("\n") + "\n\treturn shapes;\n}\n");
+console.log(`staged ${entries.length} programs into ${path.relative(landing, target)}`);
