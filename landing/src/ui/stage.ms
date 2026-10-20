@@ -2,11 +2,11 @@ import { createMemo } from "../../../../neon/src/core/memo";
 import { Accessor, createSignal } from "../../../../neon/src/core/signal";
 import { For, Show } from "../../../../neon/src/macros/ui/flow";
 import { createStyles, styleOf } from "../../../../neon/src/macros/ui/style";
-import { Pressable, Text, View } from "../../../../neon/src/components/primitives";
+import { Pressable, Text, View, ViewHandle } from "../../../../neon/src/components/primitives";
 import { Circle, Path, Svg } from "../../../../neon/src/components/svg/elements";
 import { useWindowDimensions } from "../../../../neon/src/render/environment";
+import { useWindowScrollPosition } from "../../../../neon/src/api/pageScroll";
 import { NeonNode } from "../../../../neon/src/render/node";
-import { HostNode } from "../../../../neon/src/render/hostTypes";
 import { fingerprint } from "std/hash";
 import { Layers, layersHeight } from "../../../isoline/src/layers";
 import { theme } from "../theme";
@@ -80,6 +80,13 @@ struct TryCall {
 	hint: string;
 }
 
+struct Curve {
+	top: number;
+	height: number;
+	d: string;
+	end: number;
+}
+
 struct StageCard {
 	line: int32;
 	top: number;
@@ -110,8 +117,17 @@ const TRY_CALLS: TryCall[] = [
 	{ op: "stranger", title: "Add one as a stranger", hint: "any other wallet signs" },
 	{ op: "create", title: "Create it again", hint: "the account exists already" },
 ];
+const STICK = 72 + 24;
+const TITLE_MID = 19;
 const viewport = useWindowDimensions();
+const scroll = useWindowScrollPosition();
+let stagedColumn: HTMLElement | null = null;
+let stagedFirst: number = 0;
 
+extern class HTMLElement {}
+extern function pageTop(box: HTMLElement): number from "(#.getBoundingClientRect().top + scrollY)";
+extern function boxHeight(box: HTMLElement): number from "(#.getBoundingClientRect().height)";
+extern function firstOf(box: HTMLElement): HTMLElement from "(#.firstElementChild)";
 extern function readCounter(done: (text: string) => void): void
 	from "import('devnet-relay').then(relay => relay.readCounter(#))";
 extern function sendCall(op: string, done: (text: string) => void): void
@@ -293,19 +309,32 @@ function pillKind(check: string): string {
 	return check.startsWith("PDA") ? "pda" : "program";
 }
 
-function Wire(props: { card: StageCard }): NeonNode {
-	const from = PAD + HEAD / 2;
-	const to = lineTop(props.card.line) + CODE_LINE / 2 - props.card.top;
+function curveOf(from: number, to: number): Curve {
 	const top = Math.min(from, to) - 4;
 	const height = Math.abs(to - from) + 8;
 	const bend = WIRE / 2;
 	const start = from - top;
 	const end = to - top;
-	const curve = `M 0 ${start} C ${bend} ${start} ${bend} ${end} ${WIRE} ${end}`;
-	return <View style={[s.wire, styleOf({ top, width: WIRE, height })]}>
-		<Svg width={WIRE} height={height} viewBox={`0 0 ${WIRE} ${height}`}>
-			<Path d={curve} fill="none" stroke={TONE} strokeOpacity={0.55} strokeWidth={1} />
-			<Circle cx={WIRE - 2} cy={end} r={2} fill={TONE} />
+	return { top, height, d: `M 0 ${start} C ${bend} ${start} ${bend} ${end} ${WIRE} ${end}`, end };
+}
+
+function Wire(props: { card: StageCard }): NeonNode {
+	const to = lineTop(props.card.line) + CODE_LINE / 2 - props.card.top;
+	const curve = curveOf(PAD + HEAD / 2, to);
+	return <View style={[s.wire, styleOf({ top: curve.top, width: WIRE, height: curve.height })]}>
+		<Svg width={WIRE} height={curve.height} viewBox={`0 0 ${WIRE} ${curve.height}`}>
+			<Path d={curve.d} fill="none" stroke={TONE} strokeOpacity={0.55} strokeWidth={1} />
+			<Circle cx={WIRE - 2} cy={curve.end} r={2} fill={TONE} />
+		</Svg>
+	</View>;
+}
+
+function Lead(props: { curve: Accessor<Curve> }): NeonNode {
+	const c = props.curve;
+	return <View style={[s.wire, styleOf({ top: c().top, width: WIRE, height: c().height })]}>
+		<Svg width={WIRE} height={c().height} viewBox={`0 0 ${WIRE} ${c().height}`}>
+			<Path d={c().d} fill="none" stroke={TONE} strokeOpacity={0.55} strokeWidth={1} />
+			<Circle cx={WIRE - 2} cy={c().end} r={2} fill={TONE} />
 		</Svg>
 	</View>;
 }
@@ -409,7 +438,13 @@ export function Staged(props: { code: string; idl: string }): NeonNode {
 				</View>
 			</Show>
 		</Show>
-		<View style={roomy() ? s.column : s.columnInline}>
+		<View
+			style={roomy() ? s.column : s.columnInline}
+			ref={(handle: ViewHandle): void => {
+				stagedColumn = handle.node as unknown as HTMLElement;
+				stagedFirst = cards[0].top;
+			}}
+		>
 			<For each={cards}>
 				{(card: StageCard): NeonNode =>
 					<View style={[s.card, roomy() ? styleOf({ top: card.top }) : s.cardInline]}>
@@ -474,15 +509,32 @@ export function Tryout(props: { code: string; children: NeonNode }): NeonNode {
 		setNote("sending, waiting for devnet to confirm…");
 		sendCall(op, answered);
 	};
-	const wired: StageCard = { line: 0, top: 0, accounts: [], instructions: [], errors: [] };
-	return <View style={s.staged}>
+	const from = PAD + HEAD / 2;
+	let held: HTMLElement | null = null;
+	let shown: HTMLElement | null = null;
+	const placed = createMemo((): number[] => {
+		const y = scroll().y;
+		if (!roomy() || held === null || shown === null) { return [TITLE_MID - from, TITLE_MID]; }
+		const top = pageTop(held);
+		const lead = pageTop(firstOf(held)) + boxHeight(firstOf(held)) / 2 - top;
+		const below = stagedColumn === null ? Infinity : pageTop(stagedColumn) + stagedFirst;
+		const limit = below - CARD_GAP - boxHeight(shown) - top;
+		const at = Math.max(lead - from, Math.min(y + STICK - top, limit));
+		return [at, lead];
+	});
+	const lead = createMemo((): Curve => curveOf(from, placed()[1] - placed()[0]));
+	const hold = (handle: ViewHandle): void => { held = handle.node as unknown as HTMLElement; };
+	return <View style={s.staged} ref={hold}>
 		{props.children}
 		<View style={roomy() ? s.column : s.columnInline}>
 			<View
-				style={[s.card, s.tryout, roomy() ? styleOf({ top: 0 }) : s.cardInline]}
-				ref={(node: HostNode): void => { readCounter(read); }}
+				style={[s.card, s.tryout, roomy() ? styleOf({ top: placed()[0] }) : s.cardInline]}
+				ref={(handle: ViewHandle): void => {
+					shown = handle.node as unknown as HTMLElement;
+					readCounter(read);
+				}}
 			>
-				<Show when={roomy()}><Wire card={wired} /></Show>
+				<Show when={roomy()}><Lead curve={lead} /></Show>
 				<View style={s.head}>
 					<span>TRY IT ON DEVNET</span>
 					<a style={[s.tag, s.link]} href={explorerOf(`address/${state().program}`)}>

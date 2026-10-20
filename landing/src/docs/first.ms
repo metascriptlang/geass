@@ -235,18 +235,18 @@ count = 2";
 
 export function FirstProgram(): NeonNode {
 	return <>
-		<Title tone={tone.start} title="Your first program" />
-		<Lede t={"Build a counter, test it on your machine, put it on Solana's devnet and call it " +
-			"from TypeScript."} />
-		<Heading at="goal" title="What you will build" />
 		<Tryout code={PROGRAM_CODE}>
-			<P>
-				A counter that lives on chain. Any wallet can create it once; after that only the
-				wallet that created it can add one. It is small, but it has every part a real
-				program has: state kept in an account, two instructions, a check on who is calling,
-				a test and a client.
-			</P>
+			<Title tone={tone.start} title="Your first program" />
+			<Lede t={"Build a counter, test it on your machine, put it on Solana's devnet and call it " +
+				"from TypeScript."} />
 		</Tryout>
+		<Heading at="goal" title="What you will build" />
+		<P>
+			A counter that lives on chain. Any wallet can create it once; after that only the
+			wallet that created it can add one. It is small, but it has every part a real
+			program has: state kept in an account, two instructions, a check on who is calling,
+			a test and a client.
+		</P>
 		<P>
 			You need <M t="msc" /> and the Solana CLI from{" "}
 			<L to="/docs" t="Getting started" />, and Node 24 for the client at the end.
