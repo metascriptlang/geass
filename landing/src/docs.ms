@@ -287,6 +287,7 @@ const d = createStyles({
 		left: "calc(" + SIDE + " + 280px)",
 		width: STAGE_COLUMN - 24,
 		backgroundColor: "#111215",
+		backgroundImage: "url(/stagePattern.webp)",
 	},
 	title: {
 		margin: 0,
