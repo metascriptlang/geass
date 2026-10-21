@@ -421,12 +421,11 @@ export function Staged(props: { code: string; idl: string }): NeonNode {
 		const line = y + STICK - pageTop(held);
 		const end = boxHeight(held);
 		for (let at = 0; at < cards.length; at++) {
-			placed[at] = Math.max(cards[at].top, Math.min(line, end - heightOf(cards[at])));
+			const next = at + 1 < cards.length ? cards[at + 1].top - CARD_GAP : end;
+			placed[at] = Math.max(cards[at].top, Math.min(line, next - heightOf(cards[at])));
 		}
 		return placed;
 	});
-	const covered = (at: number): boolean =>
-		at + 1 < cards.length && tops()[at + 1] < tops()[at] + heightOf(cards[at]);
 	const wireOf = (at: number): Curve =>
 		curveOf(PAD + HEAD / 2, lineTop(cards[at].line) + CODE_LINE / 2 - tops()[at]);
 	const placedStyle = (at: number): Style =>
@@ -455,7 +454,7 @@ export function Staged(props: { code: string; idl: string }): NeonNode {
 			<For each={cards}>
 				{(card: StageCard, at: () => number): NeonNode =>
 					<View style={[s.card, placedStyle(at())]}>
-						<Show when={roomy() && !covered(at())}><Lead curve={wireOf(at())} /></Show>
+						<Show when={roomy()}><Lead curve={wireOf(at())} /></Show>
 						<For each={card.accounts}>
 							{(shown: ShapeAccount): NeonNode =>
 								<Account account={shown} lit={lit} pick={pick} />}
@@ -522,17 +521,15 @@ export function Tryout(props: { code: string; children: NeonNode }): NeonNode {
 	const placed = createMemo((): number[] => {
 		const y = scroll().y;
 		if (!roomy() || held === null || shown === null) {
-			return [TITLE_MID - from, TITLE_MID, 0];
+			return [TITLE_MID - from, TITLE_MID];
 		}
 		const top = pageTop(held);
 		const lead = pageTop(firstOf(held)) + boxHeight(firstOf(held)) / 2 - top;
 		const line = y + STICK - top;
 		const height = boxHeight(shown);
-		if (stagedBox === null) { return [Math.max(lead - from, line), lead, 0]; }
-		const base = pageTop(stagedBox) - top;
-		const at = Math.max(lead - from, Math.min(line, base + boxHeight(stagedBox) - height));
-		const next = Math.max(base + stagedFirst, line);
-		return [at, lead, next < at + height ? 1 : 0];
+		if (stagedBox === null) { return [Math.max(lead - from, line), lead]; }
+		const next = pageTop(stagedBox) + stagedFirst - CARD_GAP - top;
+		return [Math.max(lead - from, Math.min(line, next - height)), lead];
 	});
 	const lead = createMemo((): Curve => curveOf(from, placed()[1] - placed()[0]));
 	const hold = (handle: ViewHandle): void => { held = handle.node as unknown as HTMLElement; };
@@ -546,7 +543,7 @@ export function Tryout(props: { code: string; children: NeonNode }): NeonNode {
 					readCounter(read);
 				}}
 			>
-				<Show when={roomy() && placed()[2] === 0}><Lead curve={lead} /></Show>
+				<Show when={roomy()}><Lead curve={lead} /></Show>
 				<View style={s.head}>
 					<span>TRY IT ON DEVNET</span>
 					<a style={[s.tag, s.link]} href={explorerOf(`address/${state().program}`)}>
