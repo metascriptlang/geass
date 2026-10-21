@@ -95,6 +95,8 @@ const CHAIN_TONE = "#b78cff";
 const REFERENCE_TONE = "#5fd4a0";
 const SIDE = "max(0px, calc((100vw - 1500px) / 2))";
 const EDGE = "calc(" + SIDE + " + 24px)";
+const STAGE_FROM = "calc(" + SIDE + " + 280px)";
+const STAGE_TO = "calc(" + SIDE + " + " + (256 + STAGE_COLUMN) + "px)";
 const STAGED = ["/docs/first-program"];
 
 const d = createStyles({
@@ -119,8 +121,13 @@ const d = createStyles({
 		height: 72,
 		paddingLeft: EDGE,
 		paddingRight: EDGE,
-		backgroundColor: "rgba(12, 13, 15, 0.72)",
 		zIndex: 2,
+	},
+	headerShut: { backgroundColor: "#0c0d0f" },
+	headerOpen: {
+		backgroundColor: "transparent",
+		backgroundImage: "linear-gradient(to right, #0c0d0f " + STAGE_FROM + ", rgba(12, 13, 15, 0.72) "
+			+ STAGE_FROM + " " + STAGE_TO + ", #0c0d0f " + STAGE_TO + ")",
 	},
 	headerEdge: { position: "absolute", bottom: 0, left: EDGE, right: EDGE },
 	brand: {
@@ -284,7 +291,7 @@ const d = createStyles({
 		position: "fixed",
 		top: 0,
 		bottom: 0,
-		left: "calc(" + SIDE + " + 280px)",
+		left: STAGE_FROM,
 		width: STAGE_COLUMN - 24,
 		backgroundColor: "#111215",
 		backgroundImage: "url(/stagePattern.webp)",
@@ -490,7 +497,7 @@ export function Docs(props: LayoutProps): NeonNode {
 	const staged = (): boolean => roomy() && STAGED.includes(location().pathname);
 	return <Here value={(): Place => placeOf(location().pathname, location().hash)}><View style={d.page}>
 		<PagePlace path={location().pathname} />
-		<View style={d.header}>
+		<View style={[d.header, staged() ? d.headerOpen : d.headerShut]}>
 			<a style={d.brand} href="/">GEASS</a>
 			<span style={d.label}>DOCS</span>
 			<View style={d.headerLinks}>
