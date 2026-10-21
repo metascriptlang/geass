@@ -282,13 +282,14 @@ const d = createStyles({
 	},
 	stageBand: {
 		position: "fixed",
-		top: 72,
+		top: 0,
 		bottom: 0,
 		left: "calc(" + SIDE + " + 280px)",
 		width: STAGE_COLUMN - 24,
 		backgroundColor: "#111215",
 		backgroundImage: "url(/stagePattern.webp)",
 	},
+	stageCap: { height: 72, zIndex: 3 },
 	title: {
 		margin: 0,
 		marginBottom: 20,
@@ -696,7 +697,10 @@ export function Docs(props: LayoutProps): NeonNode {
 				</Leaf>
 			</Group>
 		</View>
-		<Show when={staged()}><View style={d.stageBand} /></Show>
+		<Show when={staged()}>
+			<View style={d.stageBand} />
+			<View style={[d.stageBand, d.stageCap]} />
+		</Show>
 		<View style={d.article({ layout: staged() ? "staged" : wide() ? "" : "narrow" })}>
 			{props.children}
 		</View>
