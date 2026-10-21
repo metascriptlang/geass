@@ -116,15 +116,19 @@ try {
 	await tinted(false).catch(() => assert.fail("picking count again does not put its layer out"));
 	await page.setViewportSize({ width: 1600, height: 1000 });
 	const devnet = page.getByText("TRY IT ON DEVNET").locator("../..");
-	for (const [y, held] of [[0, "title"], [800, "header"], [1600, "stage"]]) {
-		await page.evaluate(y => scrollTo(0, y), y);
-		await page.waitForTimeout(300);
-		const card = await devnet.boundingBox();
-		const title = await page.locator("h1").boundingBox();
-		const next = await stage.boundingBox();
-		const at = { title: title.y + title.height / 2 - 25, header: 96, stage: next.y - 12 - card.height }[held];
-		assert.ok(Math.abs(card.y - at) < 2, `the devnet card is not held by the ${held} at scroll ${y}`);
-	}
+	const held = async (card, at, why) => {
+		for (const settled = Date.now() + 3000; ; await page.waitForTimeout(100)) {
+			const y = (await card.boundingBox()).y;
+			if (Math.abs(y - at) < 2) { return; }
+			if (Date.now() > settled) { assert.fail(`${why}: at ${y}, not ${at}`); }
+		}
+	};
+	await page.evaluate(() => scrollTo(0, 0));
+	const title = await page.locator("h1").boundingBox();
+	await held(devnet, title.y + title.height / 2 - 25, "the devnet card does not point straight at the title");
+	await page.evaluate(() => scrollTo(0, 1900));
+	await held(devnet, 96, "the devnet card does not stay under the header");
+	await held(stage, 96, "the account card does not stack under the header");
 	for (const [width, beside] of [[1400, true], [1399, false], [390, false]]) {
 		await page.setViewportSize({ width, height: 900 });
 		await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth, null, { timeout: 2000 })
