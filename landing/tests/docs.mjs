@@ -126,9 +126,18 @@ try {
 	await page.evaluate(() => scrollTo(0, 0));
 	const title = await page.locator("h1").boundingBox();
 	await held(devnet, title.y + title.height / 2 - 25, "the devnet card does not point straight at the title");
-	await page.evaluate(() => scrollTo(0, 1900));
+	await page.evaluate(() => scrollTo(0, 800));
 	await held(devnet, 96, "the devnet card does not stay under the header");
-	await held(stage, 96, "the account card does not stack under the header");
+	for (const y of [1200, 1500, 1900, 2200, 2600]) {
+		await page.evaluate(at => scrollTo(0, at), y);
+		await page.waitForTimeout(300);
+		const spans = await stage.evaluate((card, other) => [other, ...card.parentElement.children]
+			.map(box => box.getBoundingClientRect()).map(box => [box.top, box.bottom]), await devnet.elementHandle());
+		spans.reduce((above, span) => {
+			assert.ok(span[0] >= above[1] - 1, `two cards overlap at scroll ${y}: ${JSON.stringify(spans)}`);
+			return span;
+		});
+	}
 	for (const [width, beside] of [[1400, true], [1399, false], [390, false]]) {
 		await page.setViewportSize({ width, height: 900 });
 		await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth, null, { timeout: 2000 })
