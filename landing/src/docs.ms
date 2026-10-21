@@ -119,7 +119,7 @@ const d = createStyles({
 		height: 72,
 		paddingLeft: EDGE,
 		paddingRight: EDGE,
-		backgroundColor: "#0c0d0f",
+		backgroundColor: "rgba(12, 13, 15, 0.72)",
 		zIndex: 2,
 	},
 	headerEdge: { position: "absolute", bottom: 0, left: EDGE, right: EDGE },
@@ -289,7 +289,6 @@ const d = createStyles({
 		backgroundColor: "#111215",
 		backgroundImage: "url(/stagePattern.webp)",
 	},
-	stageCap: { height: 72, zIndex: 3 },
 	title: {
 		margin: 0,
 		marginBottom: 20,
@@ -697,10 +696,7 @@ export function Docs(props: LayoutProps): NeonNode {
 				</Leaf>
 			</Group>
 		</View>
-		<Show when={staged()}>
-			<View style={d.stageBand} />
-			<View style={[d.stageBand, d.stageCap]} />
-		</Show>
+		<Show when={staged()}><View style={d.stageBand} /></Show>
 		<View style={d.article({ layout: staged() ? "staged" : wide() ? "" : "narrow" })}>
 			{props.children}
 		</View>
