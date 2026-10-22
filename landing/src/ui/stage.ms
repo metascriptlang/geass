@@ -318,13 +318,18 @@ function curveOf(from: number, to: number): Curve {
 	return { top, height, d: `M 0 ${start} C ${bend} ${start} ${bend} ${end} ${WIRE} ${end}`, end };
 }
 
+const [drawn, setDrawn] = createSignal(false);
+export const drawFigures = (): void => { setDrawn(true); };
+
 function Lead(props: { curve: Accessor<Curve> }): NeonNode {
 	const c = props.curve;
 	return <View style={[s.wire, styleOf({ top: c().top, width: WIRE, height: c().height })]}>
-		<Svg width={WIRE} height={c().height} viewBox={`0 0 ${WIRE} ${c().height}`}>
-			<Path d={c().d} fill="none" stroke={TONE} strokeOpacity={0.55} strokeWidth={1} />
-			<Circle cx={WIRE - 2} cy={c().end} r={2} fill={TONE} />
-		</Svg>
+		<Show when={drawn()}>
+			<Svg width={WIRE} height={c().height} viewBox={`0 0 ${WIRE} ${c().height}`}>
+				<Path d={c().d} fill="none" stroke={TONE} strokeOpacity={0.55} strokeWidth={1} />
+				<Circle cx={WIRE - 2} cy={c().end} r={2} fill={TONE} />
+			</Svg>
+		</Show>
 	</View>;
 }
 
@@ -342,14 +347,17 @@ function Account(props: {
 			<span style={s.tag}>{props.account.size} BYTES</span>
 		</View>
 		<View style={s.figure}>
-			<Layers
-				groups={groupsOf(props.account)}
-				columns={COLUMNS}
-				tones={tones}
-				lit={props.lit}
-				palette={{ plate: PLATE, line: "#4c4f53" }}
-				label={`The ${props.account.size} bytes of ${props.account.name}, eight to a layer`}
-			/>
+			<Show when={drawn()}>
+				<Layers
+					groups={groupsOf(props.account)}
+					columns={COLUMNS}
+					tones={tones}
+					lit={props.lit}
+					palette={{ plate: PLATE, line: "#4c4f53" }}
+					label={`The ${props.account.size} bytes of ${props.account.name},`
+						+ " eight to a layer"}
+				/>
+			</Show>
 			<View style={s.legend}>
 				<For each={props.account.fields}>
 					{(field: ShapeField, at: () => number): NeonNode => <Pressable

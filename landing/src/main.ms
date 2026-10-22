@@ -8,6 +8,7 @@ import { createBrowserRoutingHistory, followLinks } from "../../../neon/src/plat
 import { RouterProvider, createRouter } from "../../../neon/src/navigation/router";
 import { NotFound } from "./notFound";
 import { routes } from "./routes";
+import { drawFigures } from "./ui/stage";
 
 extern class HTMLElement {
 	replaceChildren(): void;
@@ -41,6 +42,7 @@ if (servedAt === 0) {
 	}
 	publishWindow(realWidth(), realHeight());
 }
+drawFigures();
 if (opened.ok) {
 	const router = opened.value;
 	followLinks((url: string): boolean => router.navigate(url));
