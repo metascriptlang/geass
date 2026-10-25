@@ -1,6 +1,7 @@
 import { element } from "../../../neon/src/macros/ui/element";
 import { publishWindow } from "../../../neon/src/render/environment";
-import { hydrate, render } from "../../../neon/src/render/host";
+import { render } from "../../../neon/src/render/host";
+import { hydrate } from "../../../neon/src/render/hydrate";
 import { HostNode } from "../../../neon/src/render/hostTypes";
 import { NeonNode } from "../../../neon/src/render/node";
 import { domHost, documentBody } from "../../../neon/src/platform/browser/dom";
