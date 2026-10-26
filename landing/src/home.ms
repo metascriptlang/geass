@@ -398,7 +398,7 @@ extern class HTMLCanvasElement {
 	width: number;
 }
 
-extern function startVoidCanvas(canvas: HTMLCanvasElement, base: cstring, script: cstring): void
+extern function startVoidCanvas(canvas: HTMLCanvasElement, base: string, script: string): void
 	from "((canvas, base, script) => { const forced = new URLSearchParams(location.search); const load = ([dir, device]) => new Promise((ready) => { window.Module = { voidBackend: dir, preinitializedWebGPUDevice: device, onVoidReady: ready, locateFile: (file) => base + dir + '/' + file }; const tag = document.createElement('script'); tag.src = base + dir + '/' + script; document.body.appendChild(tag); }); window.voidLoaded ??= (forced.has('gl') || !navigator.gpu ? Promise.resolve(['gl']) : navigator.gpu.requestAdapter().then((adapter) => adapter.requestDevice()).then((device) => ['wgpu', device], (error) => forced.has('wgpu') ? Promise.reject(error) : ['gl'])).then(load); window.voidLoaded.then(() => { canvas.dataset.voidBackend = Module.voidBackend; if (!canvas.voidLeft) { canvas.voidStop = Module.voidStart(canvas); } }); })(#, #, #)";
 
 extern function stopVoidCanvas(canvas: HTMLCanvasElement): void
