@@ -1,6 +1,6 @@
 import { onCleanup } from "../../../neon/src/core/cleanup";
 import { createMemo } from "../../../neon/src/core/memo";
-import { createSignal } from "../../../neon/src/core/signal";
+import { Accessor, createSignal } from "../../../neon/src/core/signal";
 import { Show } from "../../../neon/src/macros/ui/flow";
 import { createStyles, styleOf } from "../../../neon/src/macros/ui/style";
 import { View } from "../../../neon/src/components/primitives";
@@ -416,8 +416,10 @@ function startMech(node: HostNode): void {
 	onCleanup(() => { stopVoidCanvas(canvas); });
 }
 
-const viewport = useWindowDimensions();
-const wide = createMemo(() => viewport().width >= 900);
+function useWide(): Accessor<boolean> {
+	const viewport = useWindowDimensions();
+	return createMemo(() => viewport().width >= 900);
+}
 
 const UNFOLDED_BY = 0.2;
 const CLOSING_FROM = 0.8;
@@ -463,6 +465,7 @@ const labelsClip = (): string => `inset(calc(-100% + ${150 * shareFrom(LABELS_CL
 function Lead(
 	props: { title: string; name: string; drawsAt: number; reach: string; row: Style; slope: Style; back?: boolean },
 ): NeonNode {
+	const wide = useWide();
 	const drawn = (): number => shareFrom(props.drawsAt, LEAD_DRAWS_OVER);
 	const wipe = (): string => props.back
 		? `inset(-60px -400px -20px calc(73% + 130px - ${drawn()} * (${props.reach} + 130px)))`
@@ -483,6 +486,7 @@ function Lead(
 }
 
 export function Home(): NeonNode {
+	const wide = useWide();
 	return <View style={s.scrollTrack}>
 	<PageTitle title="Geass — MetaScript for Solana" />
 	<PageHead
