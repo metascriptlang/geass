@@ -1,3 +1,5 @@
+import { onSettled } from "../../../neon/src/core/effect";
+import { Cleanup } from "../../../neon/src/core/types";
 import { element } from "../../../neon/src/macros/ui/element";
 import { publishWindow } from "../../../neon/src/render/environment";
 import { render } from "../../../neon/src/render/host";
@@ -21,8 +23,16 @@ extern function realHeight(): number from "(innerHeight)";
 
 const opened = createRouter(routes, createBrowserRoutingHistory());
 
+function Client(): NeonNode {
+	onSettled((): Cleanup | null => {
+		publishWindow(realWidth(), realHeight());
+		return null;
+	});
+	return opened.ok ? <RouterProvider router={opened.value} /> : <NotFound />;
+}
+
 function page(): NeonNode {
-	return opened.ok ? element(<RouterProvider router={opened.value} />) : element(<NotFound />);
+	return element(<Client />);
 }
 
 const host = domHost();
@@ -40,7 +50,6 @@ if (servedAt === 0) {
 		root.replaceChildren();
 		render(page(), host, root as unknown as HostNode);
 	}
-	publishWindow(realWidth(), realHeight());
 }
 if (opened.ok) {
 	const router = opened.value;
