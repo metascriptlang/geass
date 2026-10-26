@@ -1,27 +1,37 @@
-import { element } from "../../../neon/src/macros/ui/element";
-import { publishWindow } from "../../../neon/src/render/environment";
-import { SsrMarkup, renderToMarkup } from "../../../neon/src/render/ssr";
-import { createRequestRoutingHistory } from "../../../neon/src/navigation/routingHistory";
-import { RouterProvider, createRouter } from "../../../neon/src/navigation/router";
+import { NeonNode } from "../../../neon/src/render/node";
+import { App, DocumentProps, Served, serve } from "../../../neon/src/render/serve";
+import { rawHtml } from "../../../neon/src/render/ssr";
 import { NotFound } from "./notFound";
-import { routes } from "./routes";
+import { Site, routes, servedWidth } from "./routes";
 
-export interface Served {
-	status: int32;
-	location: string | null;
-	markup: SsrMarkup;
+function shell(template: string): (props: DocumentProps) => NeonNode {
+	const html = template.indexOf("<html");
+	const body = template.indexOf("<body>");
+	if (html < 0 || body < 0) { throw new Error("the page shell has no <html> or no <body> to serve the page into"); }
+	const opened = body + "<body>".length;
+	return (props: DocumentProps): NeonNode => <>
+		{rawHtml(template.slice(html, opened) + `<div id="served" data-width="${servedWidth()}">`)}
+		{props.children}
+		{rawHtml("</div>")}
+		{props.scripts}
+		{rawHtml(template.slice(opened))}
+	</>;
 }
 
-export function page(path: string, width: number): Served {
-	publishWindow(width, 0);
-	const opened = createRouter(routes, createRequestRoutingHistory(path));
-	if (!opened.ok) { return { status: 400, location: null, markup: renderToMarkup(element(<NotFound />)) }; }
-	const router = opened.value;
-	try {
-		const response = router.response();
-		if (response.location !== null) { return { status: response.status, location: response.location, markup: { html: "", css: "", head: "" } }; }
-		return { status: response.status, location: null, markup: renderToMarkup(element(<RouterProvider router={router} />)) };
-	} finally {
-		router.dispose();
+function app(template: string): App {
+	return { routes, notFound: <Site><NotFound /></Site>, client: "", document: shell(template) };
+}
+
+export function answer(path: string, userAgent: string, template: string): Promise<Served> {
+	const headers = new Map<string, string>();
+	headers.set("user-agent", userAgent);
+	return serve(app(template), path, headers);
+}
+
+when (js) {
+	import { Request, Response, fetchPage } from "../../../neon/src/render/serve";
+
+	export function respond(request: Request, template: string): Promise<Response> {
+		return fetchPage(app(template), request);
 	}
 }
