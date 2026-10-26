@@ -1,4 +1,3 @@
-import { createMemo } from "../../../neon/src/core/memo";
 import { Show } from "../../../neon/src/macros/ui/flow";
 import { createStyles, styleOf } from "../../../neon/src/macros/ui/style";
 import { View } from "../../../neon/src/components/primitives";
@@ -86,8 +85,7 @@ export function knownPage(params: Map<string, string>, found: RouteMatch): Guard
 	return indexOfPage("/docs/" + (params.get("page") ?? "")) >= 0 ? proceed() : notFound();
 }
 
-const viewport = useWindowDimensions();
-const wide = createMemo(() => viewport().width >= 900);
+function wide(): boolean { return useWindowDimensions()().width >= 900; }
 
 const CORE_TONE = "#ffa828";
 const BUILD_TONE = "#6cb6ff";

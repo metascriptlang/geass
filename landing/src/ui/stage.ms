@@ -119,7 +119,6 @@ const TRY_CALLS: TryCall[] = [
 ];
 const STICK = 72 + 24;
 const TITLE_MID = 19;
-const viewport = useWindowDimensions();
 const scroll = useWindowScrollPosition();
 let stagedBox: HTMLElement | null = null;
 let stagedFirst: number = 0;
@@ -134,7 +133,7 @@ extern function sendCall(op: string, done: (text: string) => void): void
 	from "import('devnet-relay').then(relay => relay.sendCall(#, #))";
 
 export const STAGE_COLUMN = CARD + WIRE;
-export const roomy = createMemo(() => viewport().width >= 1400);
+export function roomy(): boolean { return useWindowDimensions()().width >= 1400; }
 
 const s = createStyles({
 	staged: { position: "relative" },
