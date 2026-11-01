@@ -8,6 +8,7 @@ import { HostNode } from "../../../neon/src/render/hostTypes";
 import { NeonNode } from "../../../neon/src/render/node";
 import { domHost, documentBody } from "../../../neon/src/platform/browser/dom";
 import { createBrowserRoutingHistory, followLinks } from "../../../neon/src/platform/browser/routingHistory";
+import { followScroll } from "../../../neon/src/platform/browser/scroll";
 import { RouterProvider, createRouter } from "../../../neon/src/navigation/router";
 import { NotFound } from "./notFound";
 import { routes } from "./routes";
@@ -53,5 +54,6 @@ if (servedAt === 0) {
 }
 if (opened.ok) {
 	const router = opened.value;
+	followScroll(router);
 	followLinks((url: string): boolean => router.navigate(url));
 }
