@@ -3,5 +3,8 @@ const config = {
 	build: { target: "js" },
 	fmt: { useTabs: true },
 	globalImports: ["../../neon/src/converters"],
+	deps: {
+		"pulse": "file:../../pulse",
+	},
 };
 export default config;
